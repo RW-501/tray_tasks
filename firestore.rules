@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // V1 DEVELOPMENT ONLY. Replace with uid-scoped rules when Auth is enabled.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A responsive personal todo, calendar, goals and habits dashboard.">
+  <meta name="theme-color" content="#080b18">
+  <title>Ron's Todo & Calendar</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="brand" href="#" aria-label="Dashboard home"><span class="brand-crown">♛</span><span><strong>RON'S</strong><small>TODO & CALENDAR</small></span></a>
+      <nav class="nav flex-column gap-1 mt-3">
+        <button class="nav-link active" data-view="dashboard"><i class="bi bi-house-door"></i>Dashboard</button>
+        <button class="nav-link" data-view="calendar"><i class="bi bi-calendar3"></i>Calendar</button>
+        <button class="nav-link" data-view="today"><i class="bi bi-check-circle"></i>Today</button>
+        <button class="nav-link" data-view="week"><i class="bi bi-calendar-week"></i>This Week</button>
+        <button class="nav-link" data-view="tasks"><i class="bi bi-list-task"></i>All Tasks</button>
+        <button class="nav-link" data-view="goals"><i class="bi bi-rocket-takeoff"></i>Goals</button>
+        <button class="nav-link" data-view="notes"><i class="bi bi-journal-text"></i>Notes</button>
+        <button class="nav-link" data-view="shopping"><i class="bi bi-cart3"></i>Shopping</button>
+        <button class="nav-link" data-view="habits"><i class="bi bi-heart"></i>Habits</button>
+        <button class="nav-link" data-view="assistant"><i class="bi bi-stars"></i>AI Assistant</button>
+      </nav>
+      <div class="quick-add mt-auto">
+        <span class="eyebrow">QUICK ADD</span>
+        <button class="btn btn-outline-light w-100" data-bs-toggle="modal" data-bs-target="#taskModal"><i class="bi bi-plus-lg"></i> Add task</button>
+        <button id="quickNoteBtn" class="btn btn-outline-light w-100"><i class="bi bi-sticky"></i> Add note</button>
+        <div class="sync-state"><span id="syncDot" class="sync-dot"></span><span id="syncText">Local demo mode</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button id="mobileMenu" class="icon-btn d-lg-none" aria-label="Open navigation"><i class="bi bi-list"></i></button>
+        <div><div class="eyebrow">PERSONAL COMMAND CENTER</div><h1 id="pageTitle">Today</h1></div>
+        <div class="top-actions ms-auto">
+          <label class="search-box"><i class="bi bi-search"></i><input id="globalSearch" type="search" placeholder="Search tasks..." aria-label="Search tasks"></label>
+          <button id="todayBtn" class="btn btn-neon">Today</button>
+          <button class="icon-btn" data-bs-toggle="modal" data-bs-target="#taskModal" aria-label="Add task"><i class="bi bi-plus-lg"></i></button>
+        </div>
+      </header>
+
+      <section id="weekStrip" class="week-strip" aria-label="Week overview"></section>
+
+      <div class="dashboard-grid">
+        <section class="panel task-panel">
+          <div class="panel-header flex-wrap gap-2">
+            <div><span class="eyebrow">FOCUS DAY</span><h2 id="focusDate">Thursday</h2></div>
+            <button class="btn btn-neon ms-auto" data-bs-toggle="modal" data-bs-target="#taskModal"><i class="bi bi-plus-lg"></i> Add Task</button>
+          </div>
+          <div id="taskFilters" class="filter-row" role="group" aria-label="Task filters">
+            <button class="filter active" data-filter="all">All <span id="countAll">0</span></button>
+            <button class="filter high" data-filter="high">High <span id="countHigh">0</span></button>
+            <button class="filter medium" data-filter="medium">Medium <span id="countMedium">0</span></button>
+            <button class="filter low" data-filter="low">Low <span id="countLow">0</span></button>
+            <button class="filter" data-filter="completed">Done <span id="countDone">0</span></button>
+          </div>
+          <div id="taskList" class="task-list" aria-live="polite"></div>
+          <div id="emptyTasks" class="empty-state d-none"><i class="bi bi-check2-circle"></i><p>No tasks match this view.</p></div>
+        </section>
+
+        <section class="panel calendar-panel">
+          <div class="panel-header"><div><span class="eyebrow">CALENDAR</span><h2>Day plan</h2></div><div class="calendar-controls ms-auto"><button id="prevDay" class="icon-btn" aria-label="Previous day"><i class="bi bi-chevron-left"></i></button><button id="nextDay" class="icon-btn" aria-label="Next day"><i class="bi bi-chevron-right"></i></button></div></div>
+          <div id="timeline" class="timeline"></div>
+        </section>
+
+        <aside class="right-rail">
+          <section class="panel compact-panel">
+            <div class="panel-header"><div><span class="eyebrow">WEEKLY PROGRESS</span><h2 id="progressPercent">0%</h2></div></div>
+            <div class="progress"><div id="progressBar" class="progress-bar" role="progressbar" style="width:0%"></div></div>
+            <div class="stat-grid"><div><strong id="doneStat">0</strong><span>Done</span></div><div><strong id="openStat">0</strong><span>Open</span></div><div><strong id="highStat">0</strong><span>High</span></div></div>
+          </section>
+
+          <section class="panel compact-panel"><div class="panel-header"><div><span class="eyebrow">THIS WEEK'S GOALS</span><h2>Goals</h2></div><button class="mini-add" data-add="goal">+</button></div><div id="goalList" class="simple-list"></div></section>
+          <section class="panel compact-panel"><div class="panel-header"><div><span class="eyebrow">HABITS</span><h2>Today</h2></div><button class="mini-add" data-add="habit">+</button></div><div id="habitList" class="simple-list"></div></section>
+        </aside>
+
+        <section class="panel notes-panel"><div class="panel-header"><div><span class="eyebrow">NOTES / IDEAS</span><h2>Capture it</h2></div><button class="mini-add" data-add="note">+</button></div><div id="notesList" class="notes-list"></div></section>
+        <section class="panel shopping-panel"><div class="panel-header"><div><span class="eyebrow">SHOPPING</span><h2>Need to buy</h2></div><button class="mini-add" data-add="shopping">+</button></div><div id="shoppingList" class="simple-list"></div></section>
+        <section class="panel ai-panel"><div class="panel-header"><div><span class="eyebrow">AI ASSISTANT</span><h2>Plan my day</h2></div></div><p class="muted">Ask the assistant to prioritize your open tasks. V1 uses a local smart planner; the server endpoint is ready for an OpenAI key later.</p><button id="planDayBtn" class="btn btn-neon w-100"><i class="bi bi-stars"></i> Build my plan</button><div id="aiResult" class="ai-result mt-3"></div></section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content dark-modal"><form id="taskForm">
+      <div class="modal-header"><h2 class="modal-title fs-5" id="taskModalLabel">Add task</h2><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="taskId">
+        <div class="mb-3"><label class="form-label" for="taskTitle">Task</label><input class="form-control" id="taskTitle" maxlength="100" required></div>
+        <div class="row g-3"><div class="col-6"><label class="form-label" for="taskDate">Date</label><input type="date" class="form-control" id="taskDate" required></div><div class="col-6"><label class="form-label" for="taskTime">Start time</label><input type="time" class="form-control" id="taskTime"></div></div>
+        <div class="row g-3 mt-0"><div class="col-6"><label class="form-label" for="taskDuration">Minutes</label><input type="number" min="5" max="720" step="5" value="30" class="form-control" id="taskDuration"></div><div class="col-6"><label class="form-label" for="taskPriority">Priority</label><select class="form-select" id="taskPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></div></div>
+        <div class="mt-3"><label class="form-label" for="taskCategory">Category</label><select class="form-select" id="taskCategory"><option>Home</option><option>Creative</option><option>Personal</option><option>Finance</option><option>Shopping</option><option>Project</option><option>Work</option></select></div>
+        <div class="mt-3"><label class="form-label" for="taskNotes">Notes</label><textarea class="form-control" id="taskNotes" rows="3" maxlength="500"></textarea></div>
+        <div id="taskError" class="invalid-feedback d-block"></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-neon" type="submit">Save task</button></div>
+    </form></div></div>
+  </div>
+
+  <div id="toast" class="app-toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
