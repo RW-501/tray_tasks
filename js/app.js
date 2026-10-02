@@ -15,7 +15,140 @@ function startOfWeek(d){const x=new Date(d);x.setHours(12,0,0,0);x.setDate(x.get
 function renderWeek(){const start=startOfWeek(state.selectedDate);$('#weekStrip').innerHTML=Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);const tasks=store.data.tasks.filter(t=>t.date===iso(d));const done=tasks.filter(t=>t.completed).length;const pct=tasks.length?done/tasks.length*100:0;return `<button class="day-card ${iso(d)===selectedISO()?'selected':''}" data-date="${iso(d)}"><strong>${d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</strong><span>${d.toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span><span>${done}/${tasks.length} done</span><div class="day-progress"><i style="width:${pct}%"></i></div></button>`}).join('');$$('.day-card').forEach(b=>b.onclick=()=>{state.selectedDate=dateFromISO(b.dataset.date);render()})}
 function filteredTasks(){return tasksForDate().filter(t=>{const f=state.filter==='all'||(state.filter==='completed'?t.completed:t.priority.toLowerCase()===state.filter);const q=!state.search||`${t.title} ${t.category} ${t.notes}`.toLowerCase().includes(state.search);return f&&q}).sort((a,b)=>(a.completed-b.completed)||(a.startTime||'99:99').localeCompare(b.startTime||'99:99'))}
 function renderTasks(){const all=tasksForDate(), list=filteredTasks();$('#countAll').textContent=all.length;$('#countHigh').textContent=all.filter(t=>t.priority==='High').length;$('#countMedium').textContent=all.filter(t=>t.priority==='Medium').length;$('#countLow').textContent=all.filter(t=>t.priority==='Low').length;$('#countDone').textContent=all.filter(t=>t.completed).length;$('#taskList').innerHTML=list.map(t=>`<div class="task-row" data-id="${t.id}"><input class="task-check" type="checkbox" ${t.completed?'checked':''} aria-label="Complete ${esc(t.title)}"><span class="task-title ${t.completed?'done':''}" title="${esc(t.title)}">${esc(t.title)}</span><span class="badge-soft priority-${t.priority.toLowerCase()}">${t.priority}</span><span class="badge-soft category">${esc(t.category)}</span><button class="task-menu" aria-label="Edit ${esc(t.title)}"><i class="bi bi-three-dots-vertical"></i></button></div>`).join('');$('#emptyTasks').classList.toggle('d-none',list.length>0);$$('.task-row').forEach(row=>{const t=store.data.tasks.find(x=>x.id===row.dataset.id);row.querySelector('.task-check').onchange=async e=>{t.completed=e.target.checked;await store.upsert('tasks',t);render();toast(t.completed?'Task completed':'Task reopened')};row.querySelector('.task-menu').onclick=()=>openEdit(t)})}
-function renderTimeline(){const tasks=tasksForDate().filter(t=>t.startTime&&!t.completed).sort((a,b)=>a.startTime.localeCompare(b.startTime));$('#timeline').innerHTML=tasks.length?tasks.map(t=>`<div class="time-block"><div class="time-label">${formatTime(t.startTime)}</div><div class="event ${t.priority.toLowerCase()}"><strong>${esc(t.title)}</strong><br><small>${t.estimatedMinutes||30} min · ${esc(t.category)}</small></div></div>`).join(''):`<div class="empty-state"><i class="bi bi-calendar2-check"></i><p>No scheduled tasks for this day.</p></div>`}
+function renderTimeline() {
+
+  const timeline =
+    $("#timeline");
+
+
+  /*
+   * The timeline may not exist on every
+   * view/page. If it doesn't exist,
+   * don't try to render into it.
+   */
+
+  if (!timeline) {
+
+    console.warn(
+      'Timeline element "#timeline" was not found.'
+    );
+
+    return;
+
+  }
+
+
+  const tasks =
+    tasksForDate()
+      .filter(
+        task =>
+          task.startTime &&
+          !task.completed
+      )
+      .sort(
+        (a, b) =>
+          a.startTime.localeCompare(
+            b.startTime
+          )
+      );
+
+
+  /* =====================================================
+     EMPTY STATE
+  ===================================================== */
+
+  if (!tasks.length) {
+
+    timeline.innerHTML = `
+
+      <div class="empty-state">
+
+        <i
+          class="bi bi-calendar2-check"
+          aria-hidden="true"
+        ></i>
+
+        <p>
+          No scheduled tasks for this day.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     RENDER TASKS
+  ===================================================== */
+
+  timeline.innerHTML =
+    tasks
+      .map(task => {
+
+        const priority =
+          String(
+            task.priority || "medium"
+          ).toLowerCase();
+
+
+        const estimatedMinutes =
+          task.estimatedMinutes || 30;
+
+
+        const category =
+          task.category || "Task";
+
+
+        return `
+
+          <div class="time-block">
+
+            <div class="time-label">
+
+              ${formatTime(
+                task.startTime
+              )}
+
+            </div>
+
+
+            <div
+              class="event ${priority}"
+              data-task-id="${task.id}"
+            >
+
+              <strong>
+                ${esc(
+                  task.title || "Untitled Task"
+                )}
+              </strong>
+
+              <br>
+
+              <small>
+
+                ${estimatedMinutes} min
+
+                ·
+
+                ${esc(category)}
+
+              </small>
+
+            </div>
+
+          </div>
+
+        `;
+
+      })
+      .join("");
+
+}
 function formatTime(v){if(!v)return'';let[h,m]=v.split(':').map(Number);const ap=h>=12?'PM':'AM';h=h%12||12;return `${h}:${pad(m)} ${ap}`}
 function renderSide(){const weekStart=startOfWeek(state.selectedDate),weekEnd=new Date(weekStart);weekEnd.setDate(weekEnd.getDate()+7);const wt=store.data.tasks.filter(t=>{const d=dateFromISO(t.date);return d>=weekStart&&d<weekEnd});const done=wt.filter(t=>t.completed).length,pct=wt.length?Math.round(done/wt.length*100):0;$('#progressPercent').textContent=`${pct}%`;$('#progressBar').style.width=`${pct}%`;$('#doneStat').textContent=done;$('#openStat').textContent=wt.length-done;$('#highStat').textContent=wt.filter(t=>t.priority==='High'&&!t.completed).length}
 function simple(type,target){$(target).innerHTML=store.data[type].map(x=>`<label class="simple-item"><input type="checkbox" data-type="${type}" data-id="${x.id}" ${x.completed?'checked':''}><span class="${x.completed?'text-decoration-line-through opacity-50':''}">${esc(x.title)}</span></label>`).join('')}
