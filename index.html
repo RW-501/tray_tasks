@@ -407,7 +407,7 @@
 
 
 <!-- ======================================================
-     ADD CALENDAR EVENT MODAL
+     ADD / EDIT CALENDAR EVENT MODAL
 ======================================================= -->
 
 <div
@@ -415,19 +415,25 @@
   id="eventModal"
   tabindex="-1"
   aria-labelledby="eventModalLabel"
+  aria-describedby="eventModalDescription"
   aria-hidden="true"
 >
-
   <div class="modal-dialog modal-dialog-centered">
-
     <div class="modal-content dark-modal">
 
-      <form id="eventForm">
+      <!-- ==================================================
+           EVENT FORM
+      =================================================== -->
+
+      <form id="eventForm" novalidate>
+
+        <!-- ================================================
+             HEADER
+        ================================================= -->
 
         <div class="modal-header">
 
           <div>
-
             <div class="eyebrow">
               CALENDAR
             </div>
@@ -439,27 +445,42 @@
               Add Event
             </h2>
 
+            <p
+              id="eventModalDescription"
+              class="visually-hidden"
+            >
+              Create or edit a calendar event.
+            </p>
           </div>
 
           <button
             type="button"
             class="btn-close btn-close-white"
             data-bs-dismiss="modal"
-            aria-label="Close"
+            aria-label="Close event window"
           ></button>
 
         </div>
 
 
+        <!-- ================================================
+             BODY
+        ================================================= -->
+
         <div class="modal-body">
+
+          <!-- Existing Firestore Document ID -->
 
           <input
             type="hidden"
             id="eventId"
+            name="eventId"
           >
 
 
-          <!-- TITLE -->
+          <!-- ==============================================
+               TITLE
+          =============================================== -->
 
           <div class="mb-3">
 
@@ -467,13 +488,22 @@
               for="eventTitle"
               class="form-label"
             >
-              Event
+              Event title
+              <span
+                class="text-danger"
+                aria-hidden="true"
+              >
+                *
+              </span>
             </label>
 
             <input
+              type="text"
               id="eventTitle"
+              name="eventTitle"
               class="form-control"
               maxlength="100"
+              autocomplete="off"
               placeholder="Dinner, appointment, project time..."
               required
             >
@@ -481,7 +511,9 @@
           </div>
 
 
-          <!-- DATE -->
+          <!-- ==============================================
+               DATE
+          =============================================== -->
 
           <div class="mb-3">
 
@@ -490,11 +522,18 @@
               class="form-label"
             >
               Date
+              <span
+                class="text-danger"
+                aria-hidden="true"
+              >
+                *
+              </span>
             </label>
 
             <input
-              id="eventDate"
               type="date"
+              id="eventDate"
+              name="eventDate"
               class="form-control"
               required
             >
@@ -502,40 +541,75 @@
           </div>
 
 
-          <!-- TIMES -->
+          <!-- ==============================================
+               ALL DAY
+          =============================================== -->
 
-          <div class="row g-3">
+          <div class="form-check form-switch mb-3">
 
-            <div class="col-6">
+            <input
+              type="checkbox"
+              id="eventAllDay"
+              name="eventAllDay"
+              class="form-check-input"
+              role="switch"
+            >
+
+            <label
+              for="eventAllDay"
+              class="form-check-label"
+            >
+              All-day event
+            </label>
+
+          </div>
+
+
+          <!-- ==============================================
+               START / END TIMES
+          =============================================== -->
+
+          <div
+            id="eventTimeFields"
+            class="row g-3"
+          >
+
+            <!-- START -->
+
+            <div class="col-12 col-sm-6">
 
               <label
                 for="eventStart"
                 class="form-label"
               >
-                Start
+                Start time
               </label>
 
               <input
-                id="eventStart"
                 type="time"
+                id="eventStart"
+                name="eventStart"
                 class="form-control"
               >
 
             </div>
 
 
-            <div class="col-6">
+            <!-- END -->
+
+            <div class="col-12 col-sm-6">
 
               <label
                 for="eventEnd"
                 class="form-label"
               >
-                End
+                End time
               </label>
 
               <input
-                id="eventEnd"
                 type="time"
+                id="eventEnd"
+                name="eventEnd"
                 class="form-control"
               >
 
@@ -544,7 +618,9 @@
           </div>
 
 
-          <!-- CATEGORY -->
+          <!-- ==============================================
+               CATEGORY
+          =============================================== -->
 
           <div class="mt-3">
 
@@ -557,6 +633,7 @@
 
             <select
               id="eventCategory"
+              name="eventCategory"
               class="form-select"
             >
 
@@ -597,7 +674,9 @@
           </div>
 
 
-          <!-- NOTES -->
+          <!-- ==============================================
+               NOTES
+          =============================================== -->
 
           <div class="mt-3">
 
@@ -610,87 +689,93 @@
 
             <textarea
               id="eventNotes"
+              name="eventNotes"
               class="form-control"
               rows="3"
               maxlength="500"
               placeholder="Optional notes..."
             ></textarea>
 
-          </div>
-
-
-          <!-- ALL DAY -->
-
-          <div class="form-check form-switch mt-3">
-
-            <input
-              id="eventAllDay"
-              class="form-check-input"
-              type="checkbox"
-            >
-
-            <label
-              for="eventAllDay"
-              class="form-check-label"
-            >
-              All-day event
-            </label>
+            <div class="form-text">
+              Maximum 500 characters.
+            </div>
 
           </div>
 
+
+          <!-- ==============================================
+               ERROR MESSAGE
+          =============================================== -->
 
           <div
             id="eventError"
-            class="invalid-feedback d-block"
+            class="invalid-feedback d-block mt-3"
+            role="alert"
+            aria-live="polite"
           ></div>
 
         </div>
 
 
-<div class="modal-footer justify-content-between">
+        <!-- ================================================
+             FOOTER
+        ================================================= -->
 
-  <div>
+        <div class="modal-footer justify-content-between">
 
-    <button
-      id="deleteEventBtn"
-      type="button"
-      class="btn btn-outline-danger d-none"
-    >
-      <i class="bi bi-trash3"></i>
-      Delete
-    </button>
+          <!-- DELETE -->
 
-  </div>
+          <div>
 
-  <div class="d-flex gap-2">
+            <button
+              id="deleteEventBtn"
+              type="button"
+              class="btn btn-outline-danger d-none"
+            >
+              <i
+                class="bi bi-trash3"
+                aria-hidden="true"
+              ></i>
 
-    <button
-      type="button"
-      class="btn btn-outline-light"
-      data-bs-dismiss="modal"
-    >
-      Cancel
-    </button>
+              Delete
+            </button>
 
-    <button
-      type="submit"
-      id="saveEventBtn"
-      class="btn btn-neon"
-    >
-      <i class="bi bi-check2"></i>
-      Save Event
-    </button>
+          </div>
 
-  </div>
 
-</div>
+          <!-- ACTIONS -->
+
+          <div class="d-flex gap-2">
+
+            <button
+              type="button"
+              class="btn btn-outline-light"
+              data-bs-dismiss="modal"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              id="saveEventBtn"
+              class="btn btn-neon"
+            >
+              <i
+                class="bi bi-check2"
+                aria-hidden="true"
+              ></i>
+
+              Save Event
+            </button>
+
+          </div>
+
+        </div>
 
       </form>
 
     </div>
-
   </div>
-
 </div>
 
 
