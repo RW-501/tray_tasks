@@ -215,8 +215,8 @@ export function requestDelete({
   const readableType =
     type === "tasks"
       ? "task"
-      : type === "events"
-        ? "event"
+      : type === "tasks"
+        ? "task"
         : "item";
 
 
@@ -270,7 +270,7 @@ async function confirmDelete() {
   /*
    * Capture this before awaiting Firestore.
    *
-   * This prevents state changes while
+   * This prtasks state changes while
    * deletion is processing.
    */
 

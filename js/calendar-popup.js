@@ -127,20 +127,20 @@ function getItemsForDate(date) {
       }));
 
 
-  const events =
-    (storeReference.data.events || [])
+  const tasks =
+    (storeReference.data.tasks || [])
       .filter(
-        event =>
-          event.date === iso
+        task =>
+          task.date === iso
       )
-      .map(event => ({
-        ...event,
-        itemType: "event"
+      .map(task => ({
+        ...task,
+        itemType: "task"
       }));
 
 
   return [
-    ...events,
+    ...tasks,
     ...tasks
   ].sort((a, b) => {
 
@@ -334,7 +334,7 @@ export function renderCalendar() {
                 : "";
 
             const icon =
-              item.itemType === "event"
+              item.itemType === "task"
                 ? "•"
                 : "✓";
 
@@ -463,18 +463,18 @@ function renderSelectedDay() {
     );
 
 
-  const events =
+  const tasks =
     items.filter(
       item =>
-        item.itemType === "event"
+        item.itemType === "task"
     );
 
 
   summary.textContent =
     `${tasks.length} task${
       tasks.length === 1 ? "" : "s"
-    } • ${events.length} event${
-      events.length === 1 ? "" : "s"
+    } • ${tasks.length} task${
+      tasks.length === 1 ? "" : "s"
     }`;
 
 
@@ -525,7 +525,7 @@ function renderSelectedDay() {
         </div>
 
         <small>
-          Add an event or task for this day.
+          Add an task or task for this day.
         </small>
 
       </div>
@@ -569,7 +569,7 @@ function renderSelectedDay() {
   class="
     calendar-day-item
     ${item.completed ? "done" : ""}
-    ${!isTask ? "calendar-editable-event" : ""}
+    ${!isTask ? "calendar-editable-task" : ""}
   "
   data-item-id="${item.id}"
   data-item-type="${item.itemType}"
@@ -585,7 +585,7 @@ function renderSelectedDay() {
                   ${
                     isTask
                       ? "bi-check2-square"
-                      : "bi-calendar-event"
+                      : "bi-calendar-task"
                   }
                 "
               ></i>
@@ -652,7 +652,7 @@ function renderSelectedDay() {
 
       container
   .querySelectorAll(
-    ".calendar-editable-event"
+    ".calendar-editable-task"
   )
   .forEach(element => {
 
@@ -664,16 +664,16 @@ function renderSelectedDay() {
           element.dataset.itemId;
 
 
-        const event =
-          storeReference.data.events.find(
+        const task =
+          storeReference.data.tasks.find(
             item =>
               item.id === id
           );
 
 
-        if (event) {
+        if (task) {
 
-          openExistingEvent(event);
+          openExistingEvent(task);
 
         }
 
@@ -688,13 +688,13 @@ function renderSelectedDay() {
 /* =========================================================
    EVENT FORM
 ========================================================= */
-async function saveEvent(event) {
+async function saveEvent(task) {
 
-  event.preventDefault();
+  task.prtaskDefault();
 
   const error =
     document.getElementById(
-      "eventError"
+      "taskError"
     );
 
   error.textContent = "";
@@ -706,49 +706,49 @@ async function saveEvent(event) {
 
   const title =
     document.getElementById(
-      "eventTitle"
+      "taskTitle"
     ).value.trim();
 
 
   const date =
     document.getElementById(
-      "eventDate"
+      "taskDate"
     ).value;
 
 
   const startTime =
     document.getElementById(
-      "eventStart"
+      "taskStart"
     ).value;
 
 
   const endTime =
     document.getElementById(
-      "eventEnd"
+      "taskEnd"
     ).value;
 
 
   const allDay =
     document.getElementById(
-      "eventAllDay"
+      "taskAllDay"
     ).checked;
 
 
   const category =
     document.getElementById(
-      "eventCategory"
+      "taskCategory"
     ).value;
 
 
   const notes =
     document.getElementById(
-      "eventNotes"
+      "taskNotes"
     ).value.trim();
 
 
   const existingId =
     document.getElementById(
-      "eventId"
+      "taskId"
     ).value;
 
 
@@ -768,7 +768,7 @@ async function saveEvent(event) {
 
   /*
    * Only validate start/end times
-   * when this is NOT an all-day event.
+   * when this is NOT an all-day task.
    */
 
   if (
@@ -792,7 +792,7 @@ async function saveEvent(event) {
 
   const existingEvent =
     existingId
-      ? storeReference.data.events.find(
+      ? storeReference.data.tasks.find(
           item =>
             item.id === existingId
         )
@@ -801,7 +801,7 @@ async function saveEvent(event) {
 
   /*
    * If an ID exists but we cannot find
-   * the event locally, stop instead of
+   * the task locally, stop instead of
    * accidentally creating a duplicate.
    */
 
@@ -811,12 +811,12 @@ async function saveEvent(event) {
   ) {
 
     console.error(
-      "Unable to find event:",
+      "Unable to find task:",
       existingId
     );
 
     error.textContent =
-      "Unable to find this event. Refresh the page and try again.";
+      "Unable to find this task. Refresh the page and try again.";
 
     return;
 
@@ -854,7 +854,7 @@ async function saveEvent(event) {
 
 
     /*
-     * All-day events should not retain
+     * All-day tasks should not retain
      * old start/end times.
      */
 
@@ -896,7 +896,7 @@ async function saveEvent(event) {
 
     /*
      * Disable save button while Firestore
-     * is processing to prevent duplicate
+     * is processing to prtask duplicate
      * submissions.
      */
 
@@ -929,7 +929,7 @@ async function saveEvent(event) {
 
 
     await storeReference.upsert(
-      "events",
+      "tasks",
       item
     );
 
@@ -988,7 +988,7 @@ async function saveEvent(event) {
   } catch (saveError) {
 
     console.error(
-      "Unable to save event:",
+      "Unable to save task:",
       saveError
     );
 
@@ -996,8 +996,8 @@ async function saveEvent(event) {
     error.textContent =
       saveError?.code ===
       "permission-denied"
-        ? "Firebase denied permission to save this event."
-        : "Unable to save event. Please try again.";
+        ? "Firebase denied permission to save this task."
+        : "Unable to save task. Please try again.";
 
 
     /*
@@ -1042,25 +1042,25 @@ function updateEventTimeFields() {
 
   const allDayCheckbox =
     document.getElementById(
-      "eventAllDay"
+      "taskAllDay"
     );
 
 
   const timeFields =
     document.getElementById(
-      "eventTimeFields"
+      "taskTimeFields"
     );
 
 
   const startInput =
     document.getElementById(
-      "eventStart"
+      "taskStart"
     );
 
 
   const endInput =
     document.getElementById(
-      "eventEnd"
+      "taskEnd"
     );
 
 
@@ -1100,7 +1100,7 @@ function updateEventTimeFields() {
 
   /*
    * Remove times when switching
-   * an event to All Day.
+   * an task to All Day.
    */
 
   if (isAllDay) {
@@ -1122,22 +1122,22 @@ function opentaskModal() {
 
   const form =
     document.getElementById(
-      "eventForm"
+      "taskForm"
     );
 
-  const eventId =
+  const taskId =
     document.getElementById(
-      "eventId"
+      "taskId"
     );
 
-  const eventDate =
+  const taskDate =
     document.getElementById(
-      "eventDate"
+      "taskDate"
     );
 
-  const eventError =
+  const taskError =
     document.getElementById(
-      "eventError"
+      "taskError"
     );
 
   const modalLabel =
@@ -1163,18 +1163,18 @@ function opentaskModal() {
 
   /* CLEAR EXISTING EVENT ID */
 
-  eventId.value = "";
+  taskId.value = "";
 
 
   /* USE CURRENTLY SELECTED CALENDAR DATE */
 
-  eventDate.value =
+  taskDate.value =
     toISO(selectedDate);
 
 
   /* CLEAR OLD ERROR */
 
-  eventError.textContent = "";
+  taskError.textContent = "";
 
 
   /* SET CREATE MODE */
@@ -1228,7 +1228,7 @@ function opentaskModal() {
     () => {
 
       document.getElementById(
-        "eventTitle"
+        "taskTitle"
       ).focus();
 
     },
@@ -1253,16 +1253,16 @@ export function initCalendarPopup(store) {
 
 
   /*
-   * Make sure events always exists.
+   * Make sure tasks always exists.
    */
 
   if (
     !Array.isArray(
-      storeReference.data.events
+      storeReference.data.tasks
     )
   ) {
 
-    storeReference.data.events = [];
+    storeReference.data.tasks = [];
 
   }
 
@@ -1289,7 +1289,7 @@ export function initCalendarPopup(store) {
   ) {
 
     console.error(
-      "Calendar or event modal was not found."
+      "Calendar or task modal was not found."
     );
 
     return;
@@ -1315,7 +1315,7 @@ export function initCalendarPopup(store) {
 
   const allDayCheckbox =
     document.getElementById(
-      "eventAllDay"
+      "taskAllDay"
     );
 
 
@@ -1367,9 +1367,9 @@ export function initCalendarPopup(store) {
 
       button.addEventListener(
         "click",
-        event => {
+        task => {
 
-          event.preventDefault();
+          task.prtaskDefault();
 
 
           selectedDate =
@@ -1531,15 +1531,15 @@ export function initCalendarPopup(store) {
      EVENT FORM SUBMISSION
   ===================================================== */
 
-  const eventForm =
+  const taskForm =
     document.getElementById(
-      "eventForm"
+      "taskForm"
     );
 
 
-  if (eventForm) {
+  if (taskForm) {
 
-    eventForm.addEventListener(
+    taskForm.addEventListener(
       "submit",
       saveEvent
     );
@@ -1565,7 +1565,7 @@ export function initCalendarPopup(store) {
 
         const id =
           document.getElementById(
-            "eventId"
+            "taskId"
           ).value;
 
 
@@ -1577,7 +1577,7 @@ export function initCalendarPopup(store) {
 
 
         const existingEvent =
-          storeReference.data.events.find(
+          storeReference.data.tasks.find(
             item =>
               item.id === id
           );
@@ -1586,7 +1586,7 @@ export function initCalendarPopup(store) {
         if (!existingEvent) {
 
           console.error(
-            "Unable to find event:",
+            "Unable to find task:",
             id
           );
 
@@ -1605,7 +1605,7 @@ export function initCalendarPopup(store) {
 
         requestDelete({
 
-          type: "events",
+          type: "tasks",
 
           id:
             existingEvent.id,
@@ -1640,12 +1640,12 @@ export function initCalendarPopup(store) {
    OPEN EXISTING EVENT
 ========================================================= */
 
-function openExistingEvent(event) {
+function openExistingEvent(task) {
 
-  if (!event) {
+  if (!task) {
 
     console.error(
-      "No event supplied to openExistingEvent()."
+      "No task supplied to openExistingEvent()."
     );
 
     return;
@@ -1655,55 +1655,55 @@ function openExistingEvent(event) {
 
   const form =
     document.getElementById(
-      "eventForm"
+      "taskForm"
     );
 
 
-  const eventId =
+  const taskId =
     document.getElementById(
-      "eventId"
+      "taskId"
     );
 
 
-  const eventTitle =
+  const taskTitle =
     document.getElementById(
-      "eventTitle"
+      "taskTitle"
     );
 
 
-  const eventDate =
+  const taskDate =
     document.getElementById(
-      "eventDate"
+      "taskDate"
     );
 
 
-  const eventStart =
+  const taskStart =
     document.getElementById(
-      "eventStart"
+      "taskStart"
     );
 
 
-  const eventEnd =
+  const taskEnd =
     document.getElementById(
-      "eventEnd"
+      "taskEnd"
     );
 
 
-  const eventCategory =
+  const taskCategory =
     document.getElementById(
-      "eventCategory"
+      "taskCategory"
     );
 
 
-  const eventNotes =
+  const taskNotes =
     document.getElementById(
-      "eventNotes"
+      "taskNotes"
     );
 
 
-  const eventAllDay =
+  const taskAllDay =
     document.getElementById(
-      "eventAllDay"
+      "taskAllDay"
     );
 
 
@@ -1727,7 +1727,7 @@ function openExistingEvent(event) {
 
   const error =
     document.getElementById(
-      "eventError"
+      "taskError"
     );
 
 
@@ -1745,37 +1745,37 @@ function openExistingEvent(event) {
      LOAD EVENT DATA
   ===================================================== */
 
-  eventId.value =
-    event.id;
+  taskId.value =
+    task.id;
 
 
-  eventTitle.value =
-    event.title || "";
+  taskTitle.value =
+    task.title || "";
 
 
-  eventDate.value =
-    event.date || "";
+  taskDate.value =
+    task.date || "";
 
 
-  eventStart.value =
-    event.startTime || "";
+  taskStart.value =
+    task.startTime || "";
 
 
-  eventEnd.value =
-    event.endTime || "";
+  taskEnd.value =
+    task.endTime || "";
 
 
-  eventCategory.value =
-    event.category || "Personal";
+  taskCategory.value =
+    task.category || "Personal";
 
 
-  eventNotes.value =
-    event.notes || "";
+  taskNotes.value =
+    task.notes || "";
 
 
-  eventAllDay.checked =
+  taskAllDay.checked =
     Boolean(
-      event.allDay
+      task.allDay
     );
 
 
@@ -1837,9 +1837,9 @@ function openExistingEvent(event) {
     "shown.bs.modal",
     () => {
 
-      eventTitle.focus();
+      taskTitle.focus();
 
-      eventTitle.select();
+      taskTitle.select();
 
     },
     {

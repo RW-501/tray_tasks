@@ -5,7 +5,7 @@ const LOCAL_STORAGE_KEY = "rons-todo-calendar-v1";
 
 const COLLECTIONS = [
   "tasks",
-  "events",
+  "tasks",
   "goals",
   "habits",
   "notes",
@@ -63,7 +63,7 @@ export const store = {
 
 data: {
   tasks: [],
-  events: [],
+  tasks: [],
   goals: [],
   habits: [],
   notes: [],

@@ -909,14 +909,14 @@ function renderTasks() {
       if (checkbox) {
 
         checkbox.onchange =
-          async event => {
+          async task => {
 
             const previousValue =
               task.completed;
 
 
             task.completed =
-              event.target.checked;
+              task.target.checked;
 
 
             task.updatedAt =
@@ -953,7 +953,7 @@ function renderTasks() {
                 previousValue;
 
 
-              event.target.checked =
+              task.target.checked =
                 previousValue;
 
 
@@ -979,9 +979,9 @@ function renderTasks() {
       if (menuButton) {
 
         menuButton.onclick =
-          event => {
+          task => {
 
-            event.stopPropagation();
+            task.stopPropagation();
 
             openEdit(task);
 
@@ -996,10 +996,10 @@ function renderTasks() {
        */
 
       row.ondblclick =
-        event => {
+        task => {
 
           if (
-            event.target.matches(
+            task.target.matches(
               "input, button, i"
             )
           ) {
@@ -1131,7 +1131,7 @@ function renderTimeline() {
             <button
               type="button"
               class="
-                event
+                task
                 ${priority}
                 timeline-task
               "
@@ -1902,9 +1902,9 @@ function resetTaskForm() {
    SAVE TASK
 ========================================================= */
 
-async function saveTask(event) {
+async function saveTask(task) {
 
-  event.preventDefault();
+  task.prtaskDefault();
 
 
   const errorElement =
@@ -2644,10 +2644,10 @@ function bind() {
   if (search) {
 
     search.oninput =
-      event => {
+      task => {
 
         state.search =
-          event.target.value
+          task.target.value
             .trim()
             .toLowerCase();
 
@@ -2876,11 +2876,11 @@ async function init() {
         : [];
 
 
-    store.data.events =
+    store.data.tasks =
       Array.isArray(
-        store.data.events
+        store.data.tasks
       )
-        ? store.data.events
+        ? store.data.tasks
         : [];
 
 
