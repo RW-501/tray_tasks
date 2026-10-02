@@ -3,49 +3,67 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A responsive personal todo, calendar, goals and habits dashboard.">
+  <meta name="description" content="A responsive personal todo, calendar, goals, habits, notes and shopping dashboard.">
   <meta name="theme-color" content="#080b18">
   <title>Ron's Todo & Calendar</title>
+
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-
   <link rel="stylesheet" href="css/calendar-popup.css">
 
+  <style>
+    .universal-item { display:flex; align-items:center; gap:.65rem; }
+    .universal-item-main { flex:1; min-width:0; border:0; background:transparent; color:inherit; text-align:left; padding:.25rem 0; }
+    .universal-item-title, .universal-item-subtitle { display:block; }
+    .universal-item-subtitle { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:.15rem; }
+    .mini-edit { border:0; background:transparent; color:inherit; opacity:.65; }
+    .mini-edit:hover, .mini-edit:focus-visible { opacity:1; }
+    .time-block.timeline-task { width:100%; border:0; background:transparent; color:inherit; text-align:left; }
+    .calendar-day-item { width:100%; text-align:left; border:0; }
+    .calendar-item-dot { display:inline-block; width:.45rem; height:.45rem; border-radius:50%; margin-right:.35rem; background:currentColor; }
+    .compact-empty { padding:.75rem 0; }
+  </style>
 </head>
+
 <body>
   <div id="app" class="app-shell">
     <aside class="sidebar" aria-label="Primary navigation">
-      <a class="brand" href="#" aria-label="Dashboard home"><span class="brand-crown">♛</span><span><strong>RON'S</strong><small>TODO & CALENDAR</small></span></a>
+      <a class="brand" href="#" aria-label="Dashboard home">
+        <span class="brand-crown">♛</span>
+        <span><strong>RON'S</strong><small>TODO & CALENDAR</small></span>
+      </a>
+
       <nav class="nav flex-column gap-1 mt-3">
-        <button class="nav-link active" data-view="dashboard"><i class="bi bi-house-door"></i>Dashboard</button>
-        <button class="nav-link" data-view="calendar"><i class="bi bi-calendar3"></i>Calendar</button>
-        <button class="nav-link" data-view="today"><i class="bi bi-check-circle"></i>Today</button>
-        <button class="nav-link" data-view="week"><i class="bi bi-calendar-week"></i>This Week</button>
-        <button class="nav-link" data-view="tasks"><i class="bi bi-list-task"></i>All Tasks</button>
-        <button class="nav-link" data-view="goals"><i class="bi bi-rocket-takeoff"></i>Goals</button>
-        <button class="nav-link" data-view="notes"><i class="bi bi-journal-text"></i>Notes</button>
-        <button class="nav-link" data-view="shopping"><i class="bi bi-cart3"></i>Shopping</button>
-        <button class="nav-link" data-view="habits"><i class="bi bi-heart"></i>Habits</button>
-        <button class="nav-link" data-view="assistant"><i class="bi bi-stars"></i>AI Assistant</button>
+        <button class="nav-link active" data-view="dashboard" type="button"><i class="bi bi-house-door"></i>Dashboard</button>
+        <button class="nav-link" data-view="calendar" type="button"><i class="bi bi-calendar3"></i>Calendar</button>
+        <button class="nav-link" data-view="today" type="button"><i class="bi bi-check-circle"></i>Today</button>
+        <button class="nav-link" data-view="week" type="button"><i class="bi bi-calendar-week"></i>This Week</button>
+        <button class="nav-link" data-view="tasks" type="button"><i class="bi bi-list-task"></i>All Tasks</button>
+        <button class="nav-link" data-view="goals" type="button"><i class="bi bi-rocket-takeoff"></i>Goals</button>
+        <button class="nav-link" data-view="notes" type="button"><i class="bi bi-journal-text"></i>Notes</button>
+        <button class="nav-link" data-view="shopping" type="button"><i class="bi bi-cart3"></i>Shopping</button>
+        <button class="nav-link" data-view="habits" type="button"><i class="bi bi-heart"></i>Habits</button>
+        <button class="nav-link" data-view="assistant" type="button"><i class="bi bi-stars"></i>AI Assistant</button>
       </nav>
+
       <div class="quick-add mt-auto">
         <span class="eyebrow">QUICK ADD</span>
-        <button class="btn btn-outline-light w-100" data-bs-toggle="modal" data-bs-target="#taskModal"><i class="bi bi-plus-lg"></i> Add task</button>
-        <button id="quickNoteBtn" class="btn btn-outline-light w-100"><i class="bi bi-sticky"></i> Add note</button>
+        <button class="btn btn-outline-light w-100" data-open-task type="button"><i class="bi bi-plus-lg"></i> Add task</button>
+        <button id="quickNoteBtn" class="btn btn-outline-light w-100" type="button"><i class="bi bi-sticky"></i> Add note</button>
         <div class="sync-state"><span id="syncDot" class="sync-dot"></span><span id="syncText">Local demo mode</span></div>
       </div>
     </aside>
 
     <main class="main-content">
       <header class="topbar">
-        <button id="mobileMenu" class="icon-btn d-lg-none" aria-label="Open navigation"><i class="bi bi-list"></i></button>
+        <button id="mobileMenu" class="icon-btn d-lg-none" type="button" aria-label="Open navigation"><i class="bi bi-list"></i></button>
         <div><div class="eyebrow">PERSONAL COMMAND CENTER</div><h1 id="pageTitle">Today</h1></div>
         <div class="top-actions ms-auto">
           <label class="search-box"><i class="bi bi-search"></i><input id="globalSearch" type="search" placeholder="Search tasks..." aria-label="Search tasks"></label>
-          <button id="todayBtn" class="btn btn-neon">Today</button>
-          <button class="icon-btn" data-bs-toggle="modal" data-bs-target="#taskModal" aria-label="Add task"><i class="bi bi-plus-lg"></i></button>
+          <button id="todayBtn" class="btn btn-neon" type="button">Today</button>
+          <button class="icon-btn" data-open-task type="button" aria-label="Add task"><i class="bi bi-plus-lg"></i></button>
         </div>
       </header>
 
@@ -54,64 +72,33 @@
       <div class="dashboard-grid">
         <section class="panel task-panel">
           <div class="panel-header flex-wrap gap-2">
-            <div><span class="eyebrow">FOCUS DAY</span><h2 id="focusDate">Thursday</h2></div>
-            <button class="btn btn-neon ms-auto" data-bs-toggle="modal" data-bs-target="#taskModal"><i class="bi bi-plus-lg"></i> Add Task</button>
+            <div><span class="eyebrow">FOCUS DAY</span><h2 id="focusDate">Today</h2></div>
+            <button class="btn btn-neon ms-auto" data-open-task type="button"><i class="bi bi-plus-lg"></i> Add Task</button>
           </div>
+
           <div id="taskFilters" class="filter-row" role="group" aria-label="Task filters">
-            <button class="filter active" data-filter="all">All <span id="countAll">0</span></button>
-            <button class="filter high" data-filter="high">High <span id="countHigh">0</span></button>
-            <button class="filter medium" data-filter="medium">Medium <span id="countMedium">0</span></button>
-            <button class="filter low" data-filter="low">Low <span id="countLow">0</span></button>
-            <button class="filter" data-filter="completed">Done <span id="countDone">0</span></button>
+            <button class="filter active" data-filter="all" type="button">All <span id="countAll">0</span></button>
+            <button class="filter high" data-filter="high" type="button">High <span id="countHigh">0</span></button>
+            <button class="filter medium" data-filter="medium" type="button">Medium <span id="countMedium">0</span></button>
+            <button class="filter low" data-filter="low" type="button">Low <span id="countLow">0</span></button>
+            <button class="filter" data-filter="completed" type="button">Done <span id="countDone">0</span></button>
           </div>
+
           <div id="taskList" class="task-list" aria-live="polite"></div>
           <div id="emptyTasks" class="empty-state d-none"><i class="bi bi-check2-circle"></i><p>No tasks match this view.</p></div>
         </section>
 
-<div class="panel-header">
-
-  <div>
-
-    <span class="eyebrow">
-      CALENDAR
-    </span>
-
-    <h2>
-      Day plan
-    </h2>
-
-  </div>
-
-  <div class="calendar-controls ms-auto">
-
-    <button
-      id="openCalendarBtn"
-      class="btn btn-outline-light btn-sm"
-      type="button"
-    >
-      <i class="bi bi-calendar3"></i>
-      Full Calendar
-    </button>
-
-    <button
-      id="prevDay"
-      class="icon-btn"
-      aria-label="Previous day"
-    >
-      <i class="bi bi-chevron-left"></i>
-    </button>
-
-    <button
-      id="nextDay"
-      class="icon-btn"
-      aria-label="Next day"
-    >
-      <i class="bi bi-chevron-right"></i>
-    </button>
-
-  </div>
-
-</div>
+        <section class="panel calendar-panel">
+          <div class="panel-header">
+            <div><span class="eyebrow">DAY PLAN</span><h2>Timeline</h2></div>
+            <div class="calendar-controls ms-auto">
+              <button id="openCalendarBtn" class="btn btn-outline-light btn-sm" type="button"><i class="bi bi-calendar3"></i> Full Calendar</button>
+              <button id="prevDay" class="icon-btn" type="button" aria-label="Previous day"><i class="bi bi-chevron-left"></i></button>
+              <button id="nextDay" class="icon-btn" type="button" aria-label="Next day"><i class="bi bi-chevron-right"></i></button>
+            </div>
+          </div>
+          <div id="timeline" class="timeline" aria-live="polite"></div>
+        </section>
 
         <aside class="right-rail">
           <section class="panel compact-panel">
@@ -120,762 +107,217 @@
             <div class="stat-grid"><div><strong id="doneStat">0</strong><span>Done</span></div><div><strong id="openStat">0</strong><span>Open</span></div><div><strong id="highStat">0</strong><span>High</span></div></div>
           </section>
 
-          <section class="panel compact-panel"><div class="panel-header"><div><span class="eyebrow">THIS WEEK'S GOALS</span><h2>Goals</h2></div><button class="mini-add" data-add="goal">+</button></div><div id="goalList" class="simple-list"></div></section>
-          <section class="panel compact-panel"><div class="panel-header"><div><span class="eyebrow">HABITS</span><h2>Today</h2></div><button class="mini-add" data-add="habit">+</button></div><div id="habitList" class="simple-list"></div></section>
+          <section class="panel compact-panel">
+            <div class="panel-header"><div><span class="eyebrow">THIS WEEK'S GOALS</span><h2>Goals</h2></div><button class="mini-add" data-add="goal" type="button" aria-label="Add goal">+</button></div>
+            <div id="goalList" class="simple-list"></div>
+          </section>
+
+          <section class="panel compact-panel">
+            <div class="panel-header"><div><span class="eyebrow">HABITS</span><h2>Today</h2></div><button class="mini-add" data-add="habit" type="button" aria-label="Add habit">+</button></div>
+            <div id="habitList" class="simple-list"></div>
+          </section>
         </aside>
 
-        <section class="panel notes-panel"><div class="panel-header"><div><span class="eyebrow">NOTES / IDEAS</span><h2>Capture it</h2></div><button class="mini-add" data-add="note">+</button></div><div id="notesList" class="notes-list"></div></section>
-        <section class="panel shopping-panel"><div class="panel-header"><div><span class="eyebrow">SHOPPING</span><h2>Need to buy</h2></div><button class="mini-add" data-add="shopping">+</button></div><div id="shoppingList" class="simple-list"></div></section>
-        <section class="panel ai-panel"><div class="panel-header"><div><span class="eyebrow">AI ASSISTANT</span><h2>Plan my day</h2></div></div><p class="muted">Ask the assistant to prioritize your open tasks. V1 uses a local smart planner; the server endpoint is ready for an OpenAI key later.</p><button id="planDayBtn" class="btn btn-neon w-100"><i class="bi bi-stars"></i> Build my plan</button><div id="aiResult" class="ai-result mt-3"></div></section>
+        <section class="panel notes-panel">
+          <div class="panel-header"><div><span class="eyebrow">NOTES / IDEAS</span><h2>Capture it</h2></div><button class="mini-add" data-add="note" type="button" aria-label="Add note">+</button></div>
+          <div id="notesList" class="notes-list"></div>
+        </section>
+
+        <section class="panel shopping-panel">
+          <div class="panel-header"><div><span class="eyebrow">SHOPPING</span><h2>Need to buy</h2></div><button class="mini-add" data-add="shopping" type="button" aria-label="Add shopping item">+</button></div>
+          <div id="shoppingList" class="simple-list"></div>
+        </section>
+
+        <section class="panel ai-panel">
+          <div class="panel-header"><div><span class="eyebrow">AI ASSISTANT</span><h2>Plan my day</h2></div></div>
+          <p class="muted">Prioritize your open tasks into a focused schedule. This version uses the local smart planner and keeps the server/API path available for AI features later.</p>
+          <button id="planDayBtn" class="btn btn-neon w-100" type="button"><i class="bi bi-stars"></i> Build my plan</button>
+          <div id="aiResult" class="ai-result mt-3"></div>
+        </section>
       </div>
     </main>
   </div>
 
-  <!-- Task Modal 
+  <!-- TASK MODAL: TASKS ONLY -->
   <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content dark-modal"><form id="taskForm">
-      <div class="modal-header"><h2 class="modal-title fs-5" id="taskModalLabel">Add task</h2><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
-      <div class="modal-body">
-        <input type="hidden" id="taskId">
-        <div class="mb-3"><label class="form-label" for="taskTitle">Task</label><input class="form-control" id="taskTitle" maxlength="100" required></div>
-        <div class="row g-3"><div class="col-6"><label class="form-label" for="taskDate">Date</label><input type="date" class="form-control" id="taskDate" required></div><div class="col-6"><label class="form-label" for="taskTime">Start time</label><input type="time" class="form-control" id="taskTime"></div></div>
-        <div class="row g-3 mt-0"><div class="col-6"><label class="form-label" for="taskDuration">Minutes</label><input type="number" min="5" max="720" step="5" value="30" class="form-control" id="taskDuration"></div><div class="col-6"><label class="form-label" for="taskPriority">Priority</label><select class="form-select" id="taskPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></div></div>
-        <div class="mt-3"><label class="form-label" for="taskCategory">Category</label><select class="form-select" id="taskCategory"><option>Home</option><option>Creative</option><option>Personal</option><option>Finance</option><option>Shopping</option><option>Project</option><option>Work</option></select></div>
-        <div class="mt-3"><label class="form-label" for="taskNotes">Notes</label><textarea class="form-control" id="taskNotes" rows="3" maxlength="500"></textarea></div>
-        <div id="taskError" class="invalid-feedback d-block"></div>
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content dark-modal">
+        <form id="taskForm" novalidate>
+          <div class="modal-header">
+            <div><div class="eyebrow">TASK</div><h2 class="modal-title fs-5" id="taskModalLabel">Add Task</h2></div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <input type="hidden" id="taskId">
+            <div class="mb-3"><label class="form-label" for="taskTitle">Task title</label><input class="form-control" id="taskTitle" maxlength="120" autocomplete="off" required></div>
+            <div class="row g-3">
+              <div class="col-12 col-sm-6"><label class="form-label" for="taskDate">Date</label><input type="date" class="form-control" id="taskDate" required></div>
+              <div class="col-12 col-sm-6"><label class="form-label" for="taskTime">Start time</label><input type="time" class="form-control" id="taskTime"></div>
+            </div>
+            <div class="row g-3 mt-0">
+              <div class="col-12 col-sm-6"><label class="form-label" for="taskDuration">Minutes</label><input type="number" min="5" max="720" step="5" value="30" class="form-control" id="taskDuration"></div>
+              <div class="col-12 col-sm-6"><label class="form-label" for="taskPriority">Priority</label><select class="form-select" id="taskPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+            </div>
+            <div class="mt-3"><label class="form-label" for="taskCategory">Category</label><select class="form-select" id="taskCategory"><option>Personal</option><option>Work</option><option>Home</option><option>Finance</option><option>Health</option><option>Travel</option><option>Creative</option><option>Shopping</option><option>Project</option><option>Other</option></select></div>
+            <div class="mt-3"><label class="form-label" for="taskNotes">Notes</label><textarea class="form-control" id="taskNotes" rows="3" maxlength="500"></textarea></div>
+            <div id="taskError" class="invalid-feedback d-block mt-2" role="alert" aria-live="polite"></div>
+          </div>
+
+          <div class="modal-footer justify-content-between">
+            <button type="button" id="deleteTaskBtn" class="btn btn-outline-danger d-none"><i class="bi bi-trash3"></i> Delete</button>
+            <div class="d-flex gap-2 ms-auto">
+              <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-neon" id="saveTaskBtn"><i class="bi bi-plus-lg"></i> Add Task</button>
+            </div>
+          </div>
+        </form>
       </div>
-<div class="modal-footer justify-content-between">
-
-  <div>
-    <button
-      type="button"
-      id="deleteTaskBtn"
-      class="btn btn-outline-danger d-none"
-    >
-      <i class="bi bi-trash3"></i>
-      Delete
-    </button>
+    </div>
   </div>
 
-  <div class="d-flex gap-2">
+  <!-- FULL CALENDAR MODAL -->
+  <div class="modal fade" id="calendarModal" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content dark-modal calendar-modal-content">
+        <div class="modal-header calendar-modal-header">
+          <div><div class="eyebrow">CALENDAR</div><h2 class="modal-title" id="calendarModalLabel">My Calendar</h2></div>
+          <div class="calendar-modal-actions ms-auto">
+            <button id="calendarTodayBtn" class="btn btn-outline-light btn-sm" type="button">Today</button>
+            <button id="addCalendarEventBtn" class="btn btn-neon btn-sm" type="button"><i class="bi bi-plus-lg"></i> Add Event</button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+        </div>
 
-    <button
-      type="button"
-      class="btn btn-outline-light"
-      data-bs-dismiss="modal"
-    >
-      Cancel
-    </button>
+        <div class="modal-body">
+          <div class="calendar-popup-layout">
+            <section class="calendar-month-section">
+              <div class="calendar-month-toolbar">
+                <button id="calendarPrevMonth" class="icon-btn" type="button" aria-label="Previous month"><i class="bi bi-chevron-left"></i></button>
+                <div class="calendar-month-title"><span class="eyebrow">MONTH</span><h3 id="calendarMonthTitle"></h3></div>
+                <button id="calendarNextMonth" class="icon-btn" type="button" aria-label="Next month"><i class="bi bi-chevron-right"></i></button>
+              </div>
 
-    <button
-      type="submit"
-      class="btn btn-neon"
-      id="saveTaskBtn"
-    >
-      <i class="bi bi-check2"></i>
-      Save Task
-    </button>
+              <div class="calendar-weekdays"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+              <div id="calendarGrid" class="calendar-month-grid"></div>
+            </section>
 
+            <aside class="calendar-day-sidebar">
+              <div class="selected-day-header"><span class="eyebrow">SELECTED DAY</span><h3 id="calendarSelectedDate"></h3><p id="calendarSelectedSummary" class="muted">Your schedule for this day.</p></div>
+              <div class="calendar-day-progress">
+                <div class="d-flex justify-content-between"><span>Task progress</span><strong id="calendarDayPercent">0%</strong></div>
+                <div class="progress mt-2"><div id="calendarDayProgressBar" class="progress-bar" style="width:0%"></div></div>
+              </div>
+              <div id="calendarDayItems" class="calendar-day-items"></div>
+              <div class="d-grid gap-2 mt-3">
+                <button id="calendarAddTaskForDay" class="btn btn-outline-light" type="button"><i class="bi bi-check2-square"></i> Add Task</button>
+                <button id="calendarAddEventForDay" class="btn btn-neon" type="button"><i class="bi bi-calendar-event"></i> Add Event</button>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-</div>
-    </form></div></div>
+  <!-- EVENT MODAL: EVENTS ONLY -->
+  <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content dark-modal">
+        <form id="eventForm" novalidate>
+          <div class="modal-header">
+            <div><div class="eyebrow">CALENDAR EVENT</div><h2 class="modal-title fs-5" id="eventModalLabel">Add Event</h2></div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <input type="hidden" id="eventId">
+            <div class="mb-3"><label for="eventTitle" class="form-label">Event title</label><input type="text" id="eventTitle" class="form-control" maxlength="120" autocomplete="off" required></div>
+            <div class="mb-3"><label for="eventDate" class="form-label">Date</label><input type="date" id="eventDate" class="form-control" required></div>
+            <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" role="switch" id="eventAllDay"><label class="form-check-label" for="eventAllDay">All-day event</label></div>
+            <div id="eventTimeFields" class="row g-3">
+              <div class="col-12 col-sm-6"><label for="eventStart" class="form-label">Start time</label><input type="time" id="eventStart" class="form-control"></div>
+              <div class="col-12 col-sm-6"><label for="eventEnd" class="form-label">End time</label><input type="time" id="eventEnd" class="form-control"></div>
+            </div>
+            <div class="mt-3"><label for="eventCategory" class="form-label">Category</label><select id="eventCategory" class="form-select"><option>Personal</option><option>Work</option><option>Home</option><option>Finance</option><option>Health</option><option>Travel</option><option>Project</option><option>Other</option></select></div>
+            <div class="mt-3"><label for="eventNotes" class="form-label">Notes</label><textarea id="eventNotes" class="form-control" rows="3" maxlength="500"></textarea></div>
+            <div id="eventError" class="invalid-feedback d-block mt-2" role="alert" aria-live="polite"></div>
+          </div>
+
+          <div class="modal-footer justify-content-between">
+            <button id="deleteEventBtn" type="button" class="btn btn-outline-danger d-none"><i class="bi bi-trash3"></i> Delete</button>
+            <div class="d-flex gap-2 ms-auto">
+              <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" id="saveEventBtn" class="btn btn-neon"><i class="bi bi-plus-lg"></i> Add Event</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
--->
 
+  <!-- UNIVERSAL MODAL: NOTE / HABIT / GOAL / SHOPPING -->
+  <div class="modal fade" id="itemModal" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content dark-modal">
+        <form id="itemForm" novalidate>
+          <div class="modal-header">
+            <div><div class="eyebrow" id="itemModalEyebrow">ITEM</div><h2 class="modal-title fs-5" id="itemModalLabel">Add Item</h2></div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
 
+          <div class="modal-body">
+            <input type="hidden" id="itemType">
+            <input type="hidden" id="itemId">
+
+            <div class="mb-3"><label for="itemTitle" id="itemTitleLabel" class="form-label">Title</label><input type="text" id="itemTitle" class="form-control" maxlength="160" autocomplete="off" required></div>
+
+            <div id="itemDateGroup" class="mb-3 d-none"><label for="itemDate" class="form-label">Target date</label><input type="date" id="itemDate" class="form-control"></div>
+
+            <div id="itemFrequencyGroup" class="mb-3 d-none"><label for="itemFrequency" class="form-label">Frequency</label><select id="itemFrequency" class="form-select"><option>Daily</option><option>Weekdays</option><option>Weekly</option><option>Monthly</option></select></div>
+
+            <div id="itemQuantityGroup" class="mb-3 d-none"><label for="itemQuantity" class="form-label">Quantity</label><input type="number" id="itemQuantity" class="form-control" min="1" step="1" value="1"></div>
+
+            <div id="itemDetailsGroup" class="mb-3"><label for="itemDetails" id="itemDetailsLabel" class="form-label">Details</label><textarea id="itemDetails" class="form-control" rows="4" maxlength="1000"></textarea></div>
+
+            <div id="itemError" class="invalid-feedback d-block" role="alert" aria-live="polite"></div>
+          </div>
+
+          <div class="modal-footer justify-content-between">
+            <button id="deleteItemBtn" type="button" class="btn btn-outline-danger d-none"><i class="bi bi-trash3"></i> Delete</button>
+            <div class="d-flex gap-2 ms-auto">
+              <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+              <button id="saveItemBtn" type="submit" class="btn btn-neon"><i class="bi bi-check2"></i> Save</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHARED DELETE CONFIRMATION MODAL -->
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content dark-modal">
+        <div class="modal-header">
+          <div><div class="eyebrow">CONFIRM DELETE</div><h2 id="deleteConfirmTitle" class="modal-title fs-5">Delete item?</h2></div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <strong id="deleteItemName">This item</strong>
+          <p class="muted mb-0 mt-2">Are you sure you want to delete this? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Keep It</button>
+          <button id="confirmDeleteBtn" type="button" class="btn btn-danger"><i class="bi bi-trash3"></i> Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div id="toast" class="app-toast" role="status" aria-live="polite"></div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
-
-
-<!-- ======================================================
-     FULL CALENDAR MODAL
-======================================================= -->
-
-<div
-  class="modal fade"
-  id="calendarModal"
-  tabindex="-1"
-  aria-labelledby="calendarModalLabel"
-  aria-hidden="true"
->
-  <div
-    class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"
-  >
-    <div class="modal-content dark-modal calendar-modal-content">
-
-      <!-- HEADER -->
-      <div class="modal-header calendar-modal-header">
-
-        <div>
-          <div class="eyebrow">CALENDAR</div>
-
-          <h2
-            class="modal-title"
-            id="calendarModalLabel"
-          >
-            My Calendar
-          </h2>
-        </div>
-
-        <div class="calendar-modal-actions ms-auto">
-
-          <button
-            id="calendarTodayBtn"
-            class="btn btn-outline-light btn-sm"
-            type="button"
-          >
-            Today
-          </button>
-
-          <button
-            id="addCalendarEventBtn"
-            class="btn btn-neon btn-sm"
-            type="button"
-          >
-            <i class="bi bi-plus-lg"></i>
-            Add Event
-          </button>
-
-          <button
-            type="button"
-            class="btn-close btn-close-white"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
-
-        </div>
-
-      </div>
-
-
-      <!-- BODY -->
-      <div class="modal-body">
-
-        <div class="calendar-popup-layout">
-
-          <!-- ============================
-               LEFT: MONTH CALENDAR
-          ============================= -->
-
-          <section class="calendar-month-section">
-
-            <div class="calendar-month-toolbar">
-
-              <button
-                id="calendarPrevMonth"
-                class="icon-btn"
-                type="button"
-                aria-label="Previous month"
-              >
-                <i class="bi bi-chevron-left"></i>
-              </button>
-
-              <div class="calendar-month-title">
-
-                <span class="eyebrow">
-                  MONTH
-                </span>
-
-                <h3 id="calendarMonthTitle">
-                  October 2026
-                </h3>
-
-              </div>
-
-              <button
-                id="calendarNextMonth"
-                class="icon-btn"
-                type="button"
-                aria-label="Next month"
-              >
-                <i class="bi bi-chevron-right"></i>
-              </button>
-
-            </div>
-
-
-            <!-- DAY LABELS -->
-
-            <div class="calendar-weekdays">
-
-              <div>Sun</div>
-              <div>Mon</div>
-              <div>Tue</div>
-              <div>Wed</div>
-              <div>Thu</div>
-              <div>Fri</div>
-              <div>Sat</div>
-
-            </div>
-
-
-            <!-- GENERATED DAYS -->
-
-            <div
-              id="calendarGrid"
-              class="calendar-month-grid"
-            ></div>
-
-          </section>
-
-
-          <!-- ============================
-               RIGHT: SELECTED DAY
-          ============================= -->
-
-          <aside class="calendar-day-sidebar">
-
-            <div class="selected-day-header">
-
-              <span class="eyebrow">
-                SELECTED DAY
-              </span>
-
-              <h3 id="calendarSelectedDate">
-                Thursday, October 1
-              </h3>
-
-              <p
-                id="calendarSelectedSummary"
-                class="muted"
-              >
-                Your schedule for this day.
-              </p>
-
-            </div>
-
-
-            <!-- DAY PROGRESS -->
-
-            <div class="calendar-day-progress">
-
-              <div class="d-flex justify-content-between">
-
-                <span>
-                  Daily progress
-                </span>
-
-                <strong id="calendarDayPercent">
-                  0%
-                </strong>
-
-              </div>
-
-              <div class="progress mt-2">
-
-                <div
-                  id="calendarDayProgressBar"
-                  class="progress-bar"
-                  style="width:0%"
-                ></div>
-
-              </div>
-
-            </div>
-
-
-            <!-- DAY ITEMS -->
-
-            <div
-              id="calendarDayItems"
-              class="calendar-day-items"
-            ></div>
-
-
-            <button
-              id="calendarAddForDay"
-              class="btn btn-neon w-100 mt-3"
-              type="button"
-            >
-
-              <i class="bi bi-plus-lg"></i>
-
-              Add to this day
-
-            </button>
-
-          </aside>
-
-        </div>
-
-      </div>
-
-    </div>
-  </div>
-</div>
-
-
-<!-- ======================================================
-     ADD / EDIT CALENDAR EVENT MODAL
-======================================================= -->
-
-<div
-  class="modal fade"
-  id="taskModal"
-  tabindex="-1"
-  aria-labelledby="taskModalLabel"
-  aria-describedby="taskModalDescription"
-  aria-hidden="true"
->
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content dark-modal">
-
-      <!-- ==================================================
-           EVENT FORM
-      =================================================== -->
-
-      <form id="taskForm" novalidate>
-
-        <!-- ================================================
-             HEADER
-        ================================================= -->
-
-        <div class="modal-header">
-
-          <div>
-            <div class="eyebrow">
-              CALENDAR
-            </div>
-
-            <h2
-              id="taskModalLabel"
-              class="modal-title fs-5"
-            >
-              Add Event
-            </h2>
-
-            <p
-              id="taskModalDescription"
-              class="visually-hidden"
-            >
-              Create or edit a calendar task.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            class="btn-close btn-close-white"
-            data-bs-dismiss="modal"
-            aria-label="Close task window"
-          ></button>
-
-        </div>
-
-
-        <!-- ================================================
-             BODY
-        ================================================= -->
-
-        <div class="modal-body">
-
-          <!-- Existing Firestore Document ID -->
-
-          <input
-            type="hidden"
-            id="taskId"
-            name="taskId"
-          >
-
-
-          <!-- ==============================================
-               TITLE
-          =============================================== -->
-
-          <div class="mb-3">
-
-            <label
-              for="taskTitle"
-              class="form-label"
-            >
-              Event title
-              <span
-                class="text-danger"
-                aria-hidden="true"
-              >
-                *
-              </span>
-            </label>
-
-            <input
-              type="text"
-              id="taskTitle"
-              name="taskTitle"
-              class="form-control"
-              maxlength="100"
-              autocomplete="off"
-              placeholder="Dinner, appointment, project time..."
-              required
-            >
-
-          </div>
-
-
-          <!-- ==============================================
-               DATE
-          =============================================== -->
-
-          <div class="mb-3">
-
-            <label
-              for="taskDate"
-              class="form-label"
-            >
-              Date
-              <span
-                class="text-danger"
-                aria-hidden="true"
-              >
-                *
-              </span>
-            </label>
-
-            <input
-              type="date"
-              id="taskDate"
-              name="taskDate"
-              class="form-control"
-              required
-            >
-
-          </div>
-
-
-          <!-- ==============================================
-               ALL DAY
-          =============================================== -->
-
-          <div class="form-check form-switch mb-3">
-
-            <input
-              type="checkbox"
-              id="taskAllDay"
-              name="taskAllDay"
-              class="form-check-input"
-              role="switch"
-            >
-
-            <label
-              for="taskAllDay"
-              class="form-check-label"
-            >
-              All-day task
-            </label>
-
-          </div>
-
-
-          <!-- ==============================================
-               START / END TIMES
-          =============================================== -->
-
-          <div
-            id="taskTimeFields"
-            class="row g-3"
-          >
-
-            <!-- START -->
-
-            <div class="col-12 col-sm-6">
-
-              <label
-                for="taskStart"
-                class="form-label"
-              >
-                Start time
-              </label>
-
-              <input
-                type="time"
-                id="taskStart"
-                name="taskStart"
-                class="form-control"
-              >
-
-            </div>
-
-
-            <!-- END -->
-
-            <div class="col-12 col-sm-6">
-
-              <label
-                for="taskEnd"
-                class="form-label"
-              >
-                End time
-              </label>
-
-              <input
-                type="time"
-                id="taskEnd"
-                name="taskEnd"
-                class="form-control"
-              >
-
-            </div>
-
-          </div>
-
-
-          <!-- ==============================================
-               CATEGORY
-          =============================================== -->
-
-          <div class="mt-3">
-
-            <label
-              for="taskCategory"
-              class="form-label"
-            >
-              Category
-            </label>
-
-            <select
-              id="taskCategory"
-              name="taskCategory"
-              class="form-select"
-            >
-
-              <option value="Personal">
-                Personal
-              </option>
-
-              <option value="Work">
-                Work
-              </option>
-
-              <option value="Home">
-                Home
-              </option>
-
-              <option value="Finance">
-                Finance
-              </option>
-
-              <option value="Health">
-                Health
-              </option>
-
-              <option value="Travel">
-                Travel
-              </option>
-
-              <option value="Project">
-                Project
-              </option>
-
-              <option value="Other">
-                Other
-              </option>
-
-            </select>
-
-          </div>
-
-
-          <!-- ==============================================
-               NOTES
-          =============================================== -->
-
-          <div class="mt-3">
-
-            <label
-              for="taskNotes"
-              class="form-label"
-            >
-              Notes
-            </label>
-
-            <textarea
-              id="taskNotes"
-              name="taskNotes"
-              class="form-control"
-              rows="3"
-              maxlength="500"
-              placeholder="Optional notes..."
-            ></textarea>
-
-            <div class="form-text">
-              Maximum 500 characters.
-            </div>
-
-          </div>
-
-
-          <!-- ==============================================
-               ERROR MESSAGE
-          =============================================== -->
-
-          <div
-            id="taskError"
-            class="invalid-feedback d-block mt-3"
-            role="alert"
-            aria-live="polite"
-          ></div>
-
-        </div>
-
-
-        <!-- ================================================
-             FOOTER
-        ================================================= -->
-
-        <div class="modal-footer justify-content-between">
-
-          <!-- DELETE -->
-
-          <div>
-
-            <button
-              id="deleteEventBtn"
-              type="button"
-              class="btn btn-outline-danger d-none"
-            >
-              <i
-                class="bi bi-trash3"
-                aria-hidden="true"
-              ></i>
-
-              Delete
-            </button>
-
-          </div>
-
-
-          <!-- ACTIONS -->
-
-          <div class="d-flex gap-2">
-
-            <button
-              type="button"
-              class="btn btn-outline-light"
-              data-bs-dismiss="modal"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              id="saveEventBtn"
-              class="btn btn-neon"
-            >
-              <i
-                class="bi bi-check2"
-                aria-hidden="true"
-              ></i>
-
-              Save Event
-            </button>
-
-          </div>
-
-        </div>
-
-      </form>
-
-    </div>
-  </div>
-</div>
-
-
-<!-- ======================================================
-     DELETE CONFIRMATION
-======================================================= -->
-
-<div
-  class="modal fade"
-  id="deleteConfirmModal"
-  tabindex="-1"
-  aria-labelledby="deleteConfirmTitle"
-  aria-hidden="true"
->
-
-  <div class="modal-dialog modal-dialog-centered">
-
-    <div class="modal-content dark-modal">
-
-      <div class="modal-header">
-
-        <div>
-
-          <div class="eyebrow">
-            CONFIRM DELETE
-          </div>
-
-          <h2
-            id="deleteConfirmTitle"
-            class="modal-title fs-5"
-          >
-            Delete item?
-          </h2>
-
-        </div>
-
-        <button
-          type="button"
-          class="btn-close btn-close-white"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-
-      </div>
-
-
-      <div class="modal-body">
-
-        <div class="delete-warning">
-
-          <div class="delete-warning-icon">
-
-            <i class="bi bi-trash3"></i>
-
-          </div>
-
-          <div>
-
-            <strong id="deleteItemName">
-              This item
-            </strong>
-
-            <p class="muted mb-0 mt-1">
-              This action cannot be undone.
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div class="modal-footer">
-
-        <button
-          type="button"
-          class="btn btn-outline-light"
-          data-bs-dismiss="modal"
-        >
-          Keep It
-        </button>
-
-        <button
-          id="confirmDeleteBtn"
-          type="button"
-          class="btn btn-danger"
-        >
-          <i class="bi bi-trash3"></i>
-          Delete
-        </button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</div>
