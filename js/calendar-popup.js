@@ -127,7 +127,7 @@ function getItemsForDate(date) {
       }));
 
 
-  const tasks =
+  const events =
     (storeReference.data.tasks || [])
       .filter(
         task =>
@@ -141,7 +141,7 @@ function getItemsForDate(date) {
 
   return [
     ...tasks,
-    ...tasks
+    ...events
   ].sort((a, b) => {
 
     const timeA =
@@ -463,18 +463,18 @@ function renderSelectedDay() {
     );
 
 
-  const tasks =
+  const events =
     items.filter(
       item =>
-        item.itemType === "task"
+        item.itemType === "event"
     );
 
 
   summary.textContent =
     `${tasks.length} task${
       tasks.length === 1 ? "" : "s"
-    } • ${tasks.length} task${
-      tasks.length === 1 ? "" : "s"
+    } • ${events.length} event${
+      events.length === 1 ? "" : "s"
     }`;
 
 
