@@ -1002,91 +1002,213 @@ async function saveEvent(event) {
   }
 
 }
+
+
+
 /* =========================================================
-   OPEN EVENT MODAL
+   UPDATE EVENT TIME FIELDS
+========================================================= */
+
+function updateEventTimeFields() {
+
+  const allDayCheckbox =
+    document.getElementById(
+      "eventAllDay"
+    );
+
+
+  const timeFields =
+    document.getElementById(
+      "eventTimeFields"
+    );
+
+
+  const startInput =
+    document.getElementById(
+      "eventStart"
+    );
+
+
+  const endInput =
+    document.getElementById(
+      "eventEnd"
+    );
+
+
+  if (
+    !allDayCheckbox ||
+    !timeFields ||
+    !startInput ||
+    !endInput
+  ) {
+
+    return;
+
+  }
+
+
+  const isAllDay =
+    allDayCheckbox.checked;
+
+
+  /* SHOW / HIDE TIME SECTION */
+
+  timeFields.classList.toggle(
+    "d-none",
+    isAllDay
+  );
+
+
+  /* ENABLE / DISABLE INPUTS */
+
+  startInput.disabled =
+    isAllDay;
+
+
+  endInput.disabled =
+    isAllDay;
+
+
+  /*
+   * Remove times when switching
+   * an event to All Day.
+   */
+
+  if (isAllDay) {
+
+    startInput.value = "";
+
+    endInput.value = "";
+
+  }
+
+}
+
+
+/* =========================================================
+   OPEN NEW EVENT MODAL
 ========================================================= */
 
 function openEventModal() {
 
-  document.getElementById(
-    "eventForm"
-  ).reset();
+  const form =
+    document.getElementById(
+      "eventForm"
+    );
+
+  const eventId =
+    document.getElementById(
+      "eventId"
+    );
+
+  const eventDate =
+    document.getElementById(
+      "eventDate"
+    );
+
+  const eventError =
+    document.getElementById(
+      "eventError"
+    );
+
+  const modalLabel =
+    document.getElementById(
+      "eventModalLabel"
+    );
+
+  const saveButton =
+    document.getElementById(
+      "saveEventBtn"
+    );
+
+  const deleteButton =
+    document.getElementById(
+      "deleteEventBtn"
+    );
 
 
-  document.getElementById(
-    "eventId"
-  ).value = "";
+  /* RESET FORM */
+
+  form.reset();
 
 
-  document.getElementById(
-    "eventDate"
-  ).value =
+  /* CLEAR EXISTING EVENT ID */
+
+  eventId.value = "";
+
+
+  /* USE CURRENTLY SELECTED CALENDAR DATE */
+
+  eventDate.value =
     toISO(selectedDate);
 
 
-  document.getElementById(
-    "eventError"
-  ).textContent = "";
+  /* CLEAR OLD ERROR */
+
+  eventError.textContent = "";
 
 
-  document.getElementById(
-    "eventModalLabel"
-  ).textContent =
+  /* SET CREATE MODE */
+
+  modalLabel.textContent =
     "Add Event";
 
 
-  document.getElementById(
-    "saveEventBtn"
-  ).innerHTML = `
+  saveButton.innerHTML = `
+    <i
+      class="bi bi-plus-lg"
+      aria-hidden="true"
+    ></i>
 
-    <i class="bi bi-plus-lg"></i>
     Add Event
-
   `;
 
 
-  document.getElementById(
-    "deleteEventBtn"
-  ).classList.add(
+  /* HIDE DELETE FOR NEW EVENTS */
+
+  deleteButton.classList.add(
     "d-none"
   );
 
 
+  /* ENABLE SAVE BUTTON */
+
+  saveButton.disabled = false;
+
+
+  /* UPDATE ALL-DAY / TIME FIELD STATE */
+
+  updateEventTimeFields();
+
+
+  /* SHOW MODAL */
+
   eventModal.show();
 
-}
 
+  /* FOCUS TITLE AFTER MODAL OPENS */
 
-/* =========================================================
-   HTML SAFETY
-========================================================= */
-
-function escapeHTML(value = "") {
-
-  return value
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-    .replaceAll(
-      "'",
-      "&#039;"
+  const modalElement =
+    document.getElementById(
+      "eventModal"
     );
 
-}
 
+  modalElement.addEventListener(
+    "shown.bs.modal",
+    () => {
+
+      document.getElementById(
+        "eventTitle"
+      ).focus();
+
+    },
+    {
+      once: true
+    }
+  );
+
+}
 
 /* =========================================================
    INITIALIZATION
@@ -1094,26 +1216,16 @@ function escapeHTML(value = "") {
 
 export function initCalendarPopup(store) {
 
+  /* =====================================================
+     STORE
+  ===================================================== */
+
   storeReference = store;
-const openCalendarBtn =
-  document.getElementById(
-    "openCalendarBtn"
-  );
 
-if (openCalendarBtn) {
 
-  openCalendarBtn.addEventListener(
-    "click",
-    () => {
-
-      renderCalendar();
-
-      calendarModal.show();
-
-    }
-  );
-
-}
+  /*
+   * Make sure events always exists.
+   */
 
   if (
     !Array.isArray(
@@ -1126,23 +1238,97 @@ if (openCalendarBtn) {
   }
 
 
+  /* =====================================================
+     MODALS
+  ===================================================== */
+
+  const calendarModalElement =
+    document.getElementById(
+      "calendarModal"
+    );
+
+
+  const eventModalElement =
+    document.getElementById(
+      "eventModal"
+    );
+
+
+  if (
+    !calendarModalElement ||
+    !eventModalElement
+  ) {
+
+    console.error(
+      "Calendar or event modal was not found."
+    );
+
+    return;
+
+  }
+
+
   calendarModal =
-    new bootstrap.Modal(
-      document.getElementById(
-        "calendarModal"
-      )
+    bootstrap.Modal.getOrCreateInstance(
+      calendarModalElement
     );
 
 
   eventModal =
-    new bootstrap.Modal(
-      document.getElementById(
-        "eventModal"
-      )
+    bootstrap.Modal.getOrCreateInstance(
+      eventModalElement
     );
 
 
-  /* SIDEBAR CALENDAR BUTTON */
+  /* =====================================================
+     ALL-DAY EVENT CONTROLS
+  ===================================================== */
+
+  const allDayCheckbox =
+    document.getElementById(
+      "eventAllDay"
+    );
+
+
+  if (allDayCheckbox) {
+
+    allDayCheckbox.addEventListener(
+      "change",
+      updateEventTimeFields
+    );
+
+  }
+
+
+  /* =====================================================
+     FULL CALENDAR BUTTON
+  ===================================================== */
+
+  const openCalendarBtn =
+    document.getElementById(
+      "openCalendarBtn"
+    );
+
+
+  if (openCalendarBtn) {
+
+    openCalendarBtn.addEventListener(
+      "click",
+      () => {
+
+        renderCalendar();
+
+        calendarModal.show();
+
+      }
+    );
+
+  }
+
+
+  /* =====================================================
+     SIDEBAR CALENDAR BUTTON
+  ===================================================== */
 
   document
     .querySelectorAll(
@@ -1156,13 +1342,17 @@ if (openCalendarBtn) {
 
           event.preventDefault();
 
+
           selectedDate =
             new Date();
+
 
           visibleDate =
             new Date();
 
+
           renderCalendar();
+
 
           calendarModal.show();
 
@@ -1172,227 +1362,465 @@ if (openCalendarBtn) {
     });
 
 
-  /* PREVIOUS MONTH */
+  /* =====================================================
+     PREVIOUS MONTH
+  ===================================================== */
 
-  document.getElementById(
-    "calendarPrevMonth"
-  ).addEventListener(
-    "click",
-    () => {
-
-      visibleDate =
-        new Date(
-          visibleDate.getFullYear(),
-          visibleDate.getMonth() - 1,
-          1
-        );
-
-      renderCalendar();
-
-    }
-  );
+  const previousMonthButton =
+    document.getElementById(
+      "calendarPrevMonth"
+    );
 
 
-  /* NEXT MONTH */
+  if (previousMonthButton) {
 
-  document.getElementById(
-    "calendarNextMonth"
-  ).addEventListener(
-    "click",
-    () => {
+    previousMonthButton.addEventListener(
+      "click",
+      () => {
 
-      visibleDate =
-        new Date(
-          visibleDate.getFullYear(),
-          visibleDate.getMonth() + 1,
-          1
-        );
-
-      renderCalendar();
-
-    }
-  );
+        visibleDate =
+          new Date(
+            visibleDate.getFullYear(),
+            visibleDate.getMonth() - 1,
+            1
+          );
 
 
-  /* TODAY */
+        renderCalendar();
 
-  document.getElementById(
-    "calendarTodayBtn"
-  ).addEventListener(
-    "click",
-    () => {
-
-      selectedDate =
-        new Date();
-
-      visibleDate =
-        new Date();
-
-      renderCalendar();
-
-    }
-  );
-
-
-  /* ADD EVENT */
-
-  document.getElementById(
-    "addCalendarEventBtn"
-  ).addEventListener(
-    "click",
-    openEventModal
-  );
-
-
-  document.getElementById(
-    "calendarAddForDay"
-  ).addEventListener(
-    "click",
-    openEventModal
-  );
-
-
-  document.getElementById(
-    "eventForm"
-  ).addEventListener(
-    "submit",
-    saveEvent
-  );
-
-
-  document
-  .getElementById(
-    "deleteEventBtn"
-  )
-  .addEventListener(
-    "click",
-    () => {
-
-      const id =
-        document.getElementById(
-          "eventId"
-        ).value;
-
-
-      if (!id) {
-        return;
       }
+    );
+
+  }
 
 
-      const event =
-        storeReference.data.events.find(
-          item =>
-            item.id === id
-        );
+  /* =====================================================
+     NEXT MONTH
+  ===================================================== */
+
+  const nextMonthButton =
+    document.getElementById(
+      "calendarNextMonth"
+    );
 
 
-      if (!event) {
-        return;
+  if (nextMonthButton) {
+
+    nextMonthButton.addEventListener(
+      "click",
+      () => {
+
+        visibleDate =
+          new Date(
+            visibleDate.getFullYear(),
+            visibleDate.getMonth() + 1,
+            1
+          );
+
+
+        renderCalendar();
+
       }
+    );
+
+  }
 
 
-      eventModal.hide();
+  /* =====================================================
+     TODAY
+  ===================================================== */
+
+  const todayButton =
+    document.getElementById(
+      "calendarTodayBtn"
+    );
 
 
-      requestDelete({
+  if (todayButton) {
 
-        type: "events",
+    todayButton.addEventListener(
+      "click",
+      () => {
 
-        id: event.id,
+        selectedDate =
+          new Date();
 
-        title: event.title,
 
-        afterDelete: () => {
+        visibleDate =
+          new Date();
 
-          renderCalendar();
+
+        renderCalendar();
+
+      }
+    );
+
+  }
+
+
+  /* =====================================================
+     ADD EVENT BUTTON
+  ===================================================== */
+
+  const addEventButton =
+    document.getElementById(
+      "addCalendarEventBtn"
+    );
+
+
+  if (addEventButton) {
+
+    addEventButton.addEventListener(
+      "click",
+      openEventModal
+    );
+
+  }
+
+
+  /* =====================================================
+     ADD EVENT FOR SELECTED DAY
+  ===================================================== */
+
+  const addForDayButton =
+    document.getElementById(
+      "calendarAddForDay"
+    );
+
+
+  if (addForDayButton) {
+
+    addForDayButton.addEventListener(
+      "click",
+      openEventModal
+    );
+
+  }
+
+
+  /* =====================================================
+     EVENT FORM SUBMISSION
+  ===================================================== */
+
+  const eventForm =
+    document.getElementById(
+      "eventForm"
+    );
+
+
+  if (eventForm) {
+
+    eventForm.addEventListener(
+      "submit",
+      saveEvent
+    );
+
+  }
+
+
+  /* =====================================================
+     DELETE EVENT
+  ===================================================== */
+
+  const deleteEventButton =
+    document.getElementById(
+      "deleteEventBtn"
+    );
+
+
+  if (deleteEventButton) {
+
+    deleteEventButton.addEventListener(
+      "click",
+      () => {
+
+        const id =
+          document.getElementById(
+            "eventId"
+          ).value;
+
+
+        if (!id) {
+
+          return;
 
         }
 
-      });
 
-    }
-  );
-  
+        const existingEvent =
+          storeReference.data.events.find(
+            item =>
+              item.id === id
+          );
+
+
+        if (!existingEvent) {
+
+          console.error(
+            "Unable to find event:",
+            id
+          );
+
+          return;
+
+        }
+
+
+        /*
+         * Close edit modal before
+         * showing delete confirmation.
+         */
+
+        eventModal.hide();
+
+
+        requestDelete({
+
+          type: "events",
+
+          id:
+            existingEvent.id,
+
+          title:
+            existingEvent.title,
+
+          afterDelete: () => {
+
+            renderCalendar();
+
+          }
+
+        });
+
+      }
+    );
+
+  }
+
+
+  /* =====================================================
+     INITIAL TIME FIELD STATE
+  ===================================================== */
+
+  updateEventTimeFields();
+
 }
+
+
+/* =========================================================
+   OPEN EXISTING EVENT
+========================================================= */
 
 function openExistingEvent(event) {
 
-  document.getElementById(
-    "eventForm"
-  ).reset();
+  if (!event) {
+
+    console.error(
+      "No event supplied to openExistingEvent()."
+    );
+
+    return;
+
+  }
 
 
-  document.getElementById(
-    "eventId"
-  ).value =
+  const form =
+    document.getElementById(
+      "eventForm"
+    );
+
+
+  const eventId =
+    document.getElementById(
+      "eventId"
+    );
+
+
+  const eventTitle =
+    document.getElementById(
+      "eventTitle"
+    );
+
+
+  const eventDate =
+    document.getElementById(
+      "eventDate"
+    );
+
+
+  const eventStart =
+    document.getElementById(
+      "eventStart"
+    );
+
+
+  const eventEnd =
+    document.getElementById(
+      "eventEnd"
+    );
+
+
+  const eventCategory =
+    document.getElementById(
+      "eventCategory"
+    );
+
+
+  const eventNotes =
+    document.getElementById(
+      "eventNotes"
+    );
+
+
+  const eventAllDay =
+    document.getElementById(
+      "eventAllDay"
+    );
+
+
+  const modalLabel =
+    document.getElementById(
+      "eventModalLabel"
+    );
+
+
+  const saveButton =
+    document.getElementById(
+      "saveEventBtn"
+    );
+
+
+  const deleteButton =
+    document.getElementById(
+      "deleteEventBtn"
+    );
+
+
+  const error =
+    document.getElementById(
+      "eventError"
+    );
+
+
+  /* =====================================================
+     RESET OLD FORM STATE
+  ===================================================== */
+
+  form.reset();
+
+
+  error.textContent = "";
+
+
+  /* =====================================================
+     LOAD EVENT DATA
+  ===================================================== */
+
+  eventId.value =
     event.id;
 
 
-  document.getElementById(
-    "eventTitle"
-  ).value =
+  eventTitle.value =
     event.title || "";
 
 
-  document.getElementById(
-    "eventDate"
-  ).value =
+  eventDate.value =
     event.date || "";
 
 
-  document.getElementById(
-    "eventStart"
-  ).value =
+  eventStart.value =
     event.startTime || "";
 
 
-  document.getElementById(
-    "eventEnd"
-  ).value =
+  eventEnd.value =
     event.endTime || "";
 
 
-  document.getElementById(
-    "eventCategory"
-  ).value =
+  eventCategory.value =
     event.category || "Personal";
 
 
-  document.getElementById(
-    "eventNotes"
-  ).value =
+  eventNotes.value =
     event.notes || "";
 
 
-  document.getElementById(
-    "eventAllDay"
-  ).checked =
-    Boolean(event.allDay);
+  eventAllDay.checked =
+    Boolean(
+      event.allDay
+    );
 
 
-  document.getElementById(
-    "eventModalLabel"
-  ).textContent =
+  /* =====================================================
+     EDIT MODE
+  ===================================================== */
+
+  modalLabel.textContent =
     "Edit Event";
 
 
-  document.getElementById(
-    "saveEventBtn"
-  ).innerHTML = `
+  saveButton.innerHTML = `
+    <i
+      class="bi bi-check2"
+      aria-hidden="true"
+    ></i>
 
-    <i class="bi bi-check2"></i>
     Update Event
-
   `;
 
 
-  document.getElementById(
-    "deleteEventBtn"
-  ).classList.remove(
+  saveButton.disabled = false;
+
+
+  /* =====================================================
+     SHOW DELETE BUTTON
+  ===================================================== */
+
+  deleteButton.classList.remove(
     "d-none"
   );
 
 
+  /* =====================================================
+     UPDATE ALL-DAY / TIME FIELDS
+  ===================================================== */
+
+  updateEventTimeFields();
+
+
+  /* =====================================================
+     SHOW MODAL
+  ===================================================== */
+
   eventModal.show();
 
+
+  /* =====================================================
+     FOCUS TITLE
+  ===================================================== */
+
+  const modalElement =
+    document.getElementById(
+      "eventModal"
+    );
+
+
+  modalElement.addEventListener(
+    "shown.bs.modal",
+    () => {
+
+      eventTitle.focus();
+
+      eventTitle.select();
+
+    },
+    {
+      once: true
+    }
+  );
+
 }
+
+
+
+
+
