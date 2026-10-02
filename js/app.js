@@ -2,7 +2,9 @@ import { store } from './store.js';
 import { initCalendarPopup, renderCalendar } from './calendar-popup.js';
 import { initDeleteManager, requestDelete } from './delete-manager.js';
 import { iso, occursOn, isOccurrenceComplete, taskOccurrencesForDate, recurrenceLabel } from './recurrence.js';
-
+const API_BASE_URL =
+  "https://us-central1-tray-tasks.cloudfunctions.net/api";
+  
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const uid=()=>crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const esc=(v='')=>String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
