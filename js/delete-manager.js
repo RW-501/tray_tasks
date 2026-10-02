@@ -1,3 +1,7 @@
+/* =========================================================
+   DELETE MANAGER
+========================================================= */
+
 let deleteModal = null;
 
 let pendingDelete = null;
@@ -15,20 +19,98 @@ export function initDeleteManager(store) {
 
   storeReference = store;
 
+
+  const modalElement =
+    document.getElementById(
+      "deleteConfirmModal"
+    );
+
+
+  const confirmButton =
+    document.getElementById(
+      "confirmDeleteBtn"
+    );
+
+
+  /* =====================================================
+     VALIDATE REQUIRED HTML
+  ===================================================== */
+
+  if (!modalElement) {
+
+    console.error(
+      'Delete manager: "#deleteConfirmModal" was not found.'
+    );
+
+    return;
+
+  }
+
+
+  if (!confirmButton) {
+
+    console.error(
+      'Delete manager: "#confirmDeleteBtn" was not found.'
+    );
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     CREATE BOOTSTRAP MODAL
+  ===================================================== */
+
   deleteModal =
-    new bootstrap.Modal(
-      document.getElementById(
-        "deleteConfirmModal"
-      )
+    bootstrap.Modal.getOrCreateInstance(
+      modalElement
     );
 
 
-  document
-    .getElementById("confirmDeleteBtn")
-    .addEventListener(
-      "click",
-      confirmDelete
-    );
+  /* =====================================================
+     CONFIRM DELETE BUTTON
+  ===================================================== */
+
+  confirmButton.addEventListener(
+    "click",
+    confirmDelete
+  );
+
+
+  /* =====================================================
+     CLEAN UP WHEN MODAL CLOSES
+  ===================================================== */
+
+  modalElement.addEventListener(
+    "hidden.bs.modal",
+    () => {
+
+      /*
+       * Only clear pending information
+       * when a deletion is not currently
+       * being processed.
+       */
+
+      const button =
+        document.getElementById(
+          "confirmDeleteBtn"
+        );
+
+
+      if (
+        button &&
+        !button.disabled
+      ) {
+
+        pendingDelete = null;
+
+        afterDeleteCallback = null;
+
+      }
+
+    }
+  );
 
 }
 
@@ -44,6 +126,51 @@ export function requestDelete({
   afterDelete
 }) {
 
+  /* =====================================================
+     VALIDATE DELETE MANAGER
+  ===================================================== */
+
+  if (!storeReference) {
+
+    console.error(
+      "Delete manager has not been initialized."
+    );
+
+    return;
+
+  }
+
+
+  if (!deleteModal) {
+
+    console.error(
+      "Delete confirmation modal is not available."
+    );
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     VALIDATE ITEM
+  ===================================================== */
+
+  if (!type || !id) {
+
+    console.error(
+      "Delete request requires a type and ID."
+    );
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     SAVE PENDING DELETE
+  ===================================================== */
+
   pendingDelete = {
     type,
     id
@@ -51,13 +178,38 @@ export function requestDelete({
 
 
   afterDeleteCallback =
-    afterDelete || null;
+    typeof afterDelete === "function"
+      ? afterDelete
+      : null;
 
 
-  document.getElementById(
-    "deleteItemName"
-  ).textContent =
-    title || "This item";
+  /* =====================================================
+     UPDATE ITEM NAME
+  ===================================================== */
+
+  const itemNameElement =
+    document.getElementById(
+      "deleteItemName"
+    );
+
+
+  if (itemNameElement) {
+
+    itemNameElement.textContent =
+      title ||
+      "This item";
+
+  }
+
+
+  /* =====================================================
+     UPDATE MODAL TITLE
+  ===================================================== */
+
+  const titleElement =
+    document.getElementById(
+      "deleteConfirmTitle"
+    );
 
 
   const readableType =
@@ -68,11 +220,17 @@ export function requestDelete({
         : "item";
 
 
-  document.getElementById(
-    "deleteConfirmTitle"
-  ).textContent =
-    `Delete ${readableType}?`;
+  if (titleElement) {
 
+    titleElement.textContent =
+      `Delete ${readableType}?`;
+
+  }
+
+
+  /* =====================================================
+     SHOW CONFIRMATION
+  ===================================================== */
 
   deleteModal.show();
 
@@ -86,7 +244,9 @@ export function requestDelete({
 async function confirmDelete() {
 
   if (!pendingDelete) {
+
     return;
+
   }
 
 
@@ -96,42 +256,94 @@ async function confirmDelete() {
     );
 
 
+  if (!button) {
+
+    console.error(
+      "Delete confirmation button was not found."
+    );
+
+    return;
+
+  }
+
+
+  /*
+   * Capture this before awaiting Firestore.
+   *
+   * This prevents state changes while
+   * deletion is processing.
+   */
+
+  const deleteRequest = {
+    ...pendingDelete
+  };
+
+
+  const callback =
+    afterDeleteCallback;
+
+
   const originalHTML =
     button.innerHTML;
 
 
+  /* =====================================================
+     LOADING STATE
+  ===================================================== */
+
   button.disabled = true;
 
+
   button.innerHTML = `
+
     <span
-      class="spinner-border spinner-border-sm"
+      class="spinner-border spinner-border-sm me-2"
+      role="status"
+      aria-hidden="true"
     ></span>
 
     Deleting...
+
   `;
 
 
   try {
 
+    /* ===================================================
+       DELETE FROM STORE / FIRESTORE
+    =================================================== */
+
     await storeReference.remove(
-      pendingDelete.type,
-      pendingDelete.id
+      deleteRequest.type,
+      deleteRequest.id
     );
 
 
-    deleteModal.hide();
-
-
-    if (afterDeleteCallback) {
-
-      await afterDeleteCallback();
-
-    }
-
+    /* ===================================================
+       CLEAR STATE
+    =================================================== */
 
     pendingDelete = null;
 
     afterDeleteCallback = null;
+
+
+    /* ===================================================
+       CLOSE CONFIRMATION
+    =================================================== */
+
+    deleteModal.hide();
+
+
+    /* ===================================================
+       REFRESH CALLER
+    =================================================== */
+
+    if (callback) {
+
+      await callback();
+
+    }
 
 
   } catch (error) {
@@ -142,11 +354,29 @@ async function confirmDelete() {
     );
 
 
+    /*
+     * Keep pendingDelete intact so
+     * the user can try again.
+     */
+
+    pendingDelete =
+      deleteRequest;
+
+
+    afterDeleteCallback =
+      callback;
+
+
     alert(
       "Unable to delete this item. Please try again."
     );
 
+
   } finally {
+
+    /* ===================================================
+       RESTORE BUTTON
+    =================================================== */
 
     button.disabled = false;
 
@@ -156,68 +386,3 @@ async function confirmDelete() {
   }
 
 }
-
-document
-  .getElementById(
-    "deleteTaskBtn"
-  )
-  .addEventListener(
-    "click",
-    () => {
-
-      const id =
-        document.getElementById(
-          "taskId"
-        ).value;
-
-
-      if (!id) {
-        return;
-      }
-
-
-      const task =
-        store.data.tasks.find(
-          item =>
-            item.id === id
-        );
-
-
-      if (!task) {
-        return;
-      }
-
-
-      bootstrap.Modal
-        .getInstance(
-          document.getElementById(
-            "taskModal"
-          )
-        )
-        ?.hide();
-
-
-      requestDelete({
-
-        type: "tasks",
-
-        id: task.id,
-
-        title: task.title,
-
-        afterDelete: () => {
-
-          /*
-           Replace renderApp() with the
-           name of your existing main
-           render function if different.
-          */
-
-          renderApp();
-
-        }
-
-      });
-
-    }
-  );
