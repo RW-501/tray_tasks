@@ -1,10 +1,32 @@
-import express from 'express';
-import cors from 'cors';
-import OpenAI from 'openai';
-const app=express(); app.use(cors()); app.use(express.json({limit:'500kb'}));
-const client=()=>{if(!process.env.OPENAI_API_KEY)throw new Error('OPENAI_API_KEY is not configured.');return new OpenAI({apiKey:process.env.OPENAI_API_KEY})};
-const model=process.env.OPENAI_MODEL||'gpt-5-mini';
-app.get('/api/health',(_,res)=>res.json({ok:true,model}));
-app.post('/api/plan-day',async(req,res)=>{try{const tasks=Array.isArray(req.body.tasks)?req.body.tasks.slice(0,60):[];const r=await client().responses.create({model,input:[{role:'system',content:'You are a practical productivity planner. Build a realistic day plan. Respect priority, explicit start times, duration, recurring obligations, and breaks. Be concise and actionable.'},{role:'user',content:JSON.stringify({date:req.body.date,tasks})}]});res.json({plan:r.output_text})}catch(e){console.error(e);res.status(500).json({error:e.message})}});
-app.post('/api/analyze-note',async(req,res)=>{try{const title=String(req.body.title||'').slice(0,160),text=String(req.body.text||'').slice(0,12000);const r=await client().responses.create({model,input:[{role:'system',content:`Analyze a personal note and decide whether it contains actionable work. Return ONLY valid JSON: {"summary":"...","actions":[{"type":"task|goal|project","title":"...","reason":"...","category":"Personal|Work|Home|Finance|Health|Travel|Creative|Shopping|Project|Other","priority":"High|Medium|Low","date":"YYYY-MM-DD or empty","deadline":"YYYY-MM-DD or empty","estimatedMinutes":30}]}. Split independent actions into separate items. Do not invent commitments. If it is purely reference material, actions may be empty.`},{role:'user',content:JSON.stringify({title,text,currentDate:new Date().toISOString().slice(0,10)})}]});let raw=r.output_text.trim().replace(/^```json\s*/i,'').replace(/```$/,'').trim();res.json(JSON.parse(raw))}catch(e){console.error(e);res.status(500).json({error:'Unable to analyze note.'})}});
-app.listen(process.env.PORT||3000,()=>console.log(`Command Center API ready on ${process.env.PORT||3000}`));
+/**
+ * Import function triggers from their respective submodules:
+ *
+ * const {onCall} = require("firebase-functions/v2/https");
+ * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
+ *
+ * See a full list of supported triggers at https://firebase.google.com/docs/functions
+ */
+
+const {setGlobalOptions} = require("firebase-functions");
+const {onRequest} = require("firebase-functions/https");
+const logger = require("firebase-functions/logger");
+
+// For cost control, you can set the maximum number of containers that can be
+// running at the same time. This helps mitigate the impact of unexpected
+// traffic spikes by instead downgrading performance. This limit is a
+// per-function limit. You can override the limit for each function using the
+// `maxInstances` option in the function's options, e.g.
+// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
+// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
+// functions should each use functions.runWith({ maxInstances: 10 }) instead.
+// In the v1 API, each function can only serve one request per container, so
+// this will be the maximum concurrent request count.
+setGlobalOptions({ maxInstances: 10 });
+
+// Create and deploy your first functions
+// https://firebase.google.com/docs/functions/get-started
+
+// exports.helloWorld = onRequest((request, response) => {
+//   logger.info("Hello logs!", {structuredData: true});
+//   response.send("Hello from Firebase!");
+// });
