@@ -59,274 +59,438 @@ exports.api = onRequest(
       // -------------------------
       // Analyze Note
       // -------------------------
-      if (req.method === "POST" && req.path === "/analyze-note") {
-        const note =
-          req.body?.note ||
-          req.body?.text ||
-          req.body?.content ||
-          "";
+if (req.method === "POST" && req.path === "/analyze-note") {
+  const note =
+    req.body?.note ||
+    req.body?.text ||
+    req.body?.content ||
+    "";
 
-        if (!note.trim()) {
-          return res.status(400).json({
-            error: "A note is required.",
-          });
-        }
+  if (typeof note !== "string" || !note.trim()) {
+    return res.status(400).json({
+      error: "A note is required.",
+    });
+  }
 
-        const client = getOpenAI();
-const today = new Date().toISOString().split("T")[0];
+  const client = getOpenAI();
 
-const response = await client.responses.create({
-  model: "gpt-5-mini",
+  // Tray Tasks is currently using Central Time.
+  // This prevents UTC from accidentally shifting "today".
+  const now = new Date();
 
-  input: [
-    {
-      role: "system",
-      content: `
-You are the intelligent task-extraction and planning engine for Tray Tasks,
-a personal productivity application.
+  const currentDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
 
-CURRENT DATE:
-${today}
+  const currentWeekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    weekday: "long",
+  }).format(now);
 
-Your job is to carefully read the user's note and convert actionable
-statements into structured tasks, projects, and goals.
+  console.log("Analyzing note:", note);
+  console.log("Current date:", currentDate, currentWeekday);
 
-You must pay special attention to:
-- dates
-- relative dates
-- multiple dates
-- deadlines
-- recurring actions
-- times
-- priorities
-- separate commitments contained in the same sentence
+  const response = await client.responses.create({
+    model: "gpt-5-mini",
 
+    instructions: `
+You are the task extraction engine for Tray Tasks.
 
-==============================
-DATE INTERPRETATION
-==============================
+Your ONLY job is to turn natural-language notes into structured
+tasks, projects, and goals.
 
-Resolve relative dates using CURRENT DATE.
+TODAY IS:
+${currentWeekday}, ${currentDate}
+
+All relative dates MUST be calculated from this date.
+
+==================================================
+MOST IMPORTANT RULE: DO NOT LOSE ACTIONS OR DATES
+==================================================
+
+Every explicit action must be represented.
+
+Every explicit date attached to an action must be represented.
+
+If the SAME action must happen on TWO OR MORE distinct dates,
+create a SEPARATE task for EACH date.
+
+For example:
+
+USER:
+"I need to post on Facebook tomorrow and Wednesday."
+
+This contains TWO commitments:
+
+1. Post on Facebook tomorrow.
+2. Post on Facebook Wednesday.
+
+Therefore you MUST return TWO tasks.
+
+NEVER return only one task for that sentence.
+
+NEVER put "tomorrow and Wednesday" into one task's date.
+
+==================================================
+DATE RULES
+==================================================
+
+All task dates must use YYYY-MM-DD.
+
+Interpret:
+
+"today"
+= ${currentDate}
+
+"tomorrow"
+= the calendar day immediately after ${currentDate}
+
+A weekday by itself such as:
+"Wednesday"
+= the next occurrence of that weekday that has not already passed.
+
+"next Wednesday"
+= Wednesday of the following week.
 
 Examples:
 
-"tomorrow"
-→ the calendar day after CURRENT DATE
+"Call mom tomorrow"
+=> 1 task
 
-"today"
-→ CURRENT DATE
+"Call mom tomorrow and Friday"
+=> 2 tasks
 
-"Wednesday"
-→ the next applicable Wednesday
+"Post Monday, Wednesday and Friday"
+=> 3 tasks
 
-"this Wednesday"
-→ Wednesday of the current week when still upcoming
+"Go to the gym Saturday and Sunday"
+=> 2 tasks
 
-"next Wednesday"
-→ Wednesday of the following week
+"Pay rent Friday"
+=> 1 task
 
-"Friday and Saturday"
-→ TWO separate dated tasks
+"Finish report by Friday"
+=> 1 task due Friday
 
-"tomorrow and Wednesday"
-→ TWO separate dated tasks
+==================================================
+RECURRING TASKS
+==================================================
 
-"Monday, Wednesday, and Friday"
-→ THREE separate dated tasks
+Distinguish multiple explicit dates from recurrence.
 
-"every Wednesday"
-→ one recurring task with frequency information
+"I need to post tomorrow and Wednesday."
+=> TWO individual tasks.
 
-"by Friday"
-→ treat Friday as the deadline/due date when appropriate
+"I need to post every Wednesday."
+=> ONE recurring task.
 
+"I need to work out every Monday, Wednesday and Friday."
+=> ONE recurring task with those weekdays.
 
-==============================
-MULTIPLE DATE RULE
-==============================
+For recurring tasks, include recurrence information.
 
-This is extremely important:
+==================================================
+TIMES
+==================================================
 
-When ONE action is explicitly requested on MULTIPLE individual dates,
-create a SEPARATE task for EACH date unless the user clearly describes
-a recurring schedule.
+Preserve explicit times.
 
-Example:
+Examples:
 
-User:
-"I need to post on Facebook tomorrow and Wednesday."
+"Call the dentist tomorrow at 10 AM"
 
-Correct interpretation:
+should include:
 
-{
-  "tasks": [
-    {
-      "title": "Post on Facebook",
-      "details": "",
-      "priority": "Medium",
-      "date": "<tomorrow's YYYY-MM-DD date>",
-      "project": null
-    },
-    {
-      "title": "Post on Facebook",
-      "details": "",
-      "priority": "Medium",
-      "date": "<Wednesday's YYYY-MM-DD date>",
-      "project": null
-    }
-  ]
-}
+"startTime": "10:00"
 
-DO NOT combine those into one task.
+"Meeting Wednesday at 3:30 PM"
 
-DO NOT ignore the second date.
+should include:
 
+"startTime": "15:30"
 
-==============================
-TASK EXTRACTION
-==============================
+Do NOT invent a time when none was given.
 
-Create a task whenever the user expresses an action they intend,
-need, plan, or are expected to perform.
+==================================================
+TASK DETECTION
+==================================================
 
-Examples of actionable language include:
+Statements indicating intention, obligation, reminders,
+plans, or required actions are tasks.
+
+Examples include:
 
 "I need to..."
 "I have to..."
 "I should..."
-"Remind me to..."
 "I want to..."
 "I plan to..."
+"Remind me to..."
 "Don't let me forget..."
-"I need to remember..."
 "Make sure I..."
-"I need this done..."
-"I need to call..."
+"I need to remember..."
 "I need to post..."
+"I need to call..."
 "I need to buy..."
 "I need to finish..."
 
-A short or casual sentence can still contain a valid task.
+Casual language still counts.
 
-For example:
+"I gotta call mom tomorrow."
 
-"Post on Facebook tomorrow."
+is a task.
 
-IS a task.
+"Facebook tomorrow."
 
+can be interpreted as a task if the surrounding note clearly
+indicates the user intends to post on Facebook.
 
-==============================
-TASK STRUCTURE
-==============================
+==================================================
+TASK TITLES
+==================================================
 
-Each task should use:
+Titles should be short and action-oriented.
 
-{
-  "title": "",
-  "details": "",
-  "priority": "Low|Medium|High",
-  "date": "YYYY-MM-DD or null",
-  "project": null,
-  "startTime": null,
-  "estimatedMinutes": null
-}
-
-Keep task titles concise and action-oriented.
-
-Good:
+GOOD:
 "Post on Facebook"
 
-Bad:
-"I need to remember that I should post something on Facebook"
+GOOD:
+"Call dentist"
 
+GOOD:
+"Buy groceries"
 
-==============================
+BAD:
+"I need to remember that I have to post on Facebook tomorrow"
+
+==================================================
+PRIORITY
+==================================================
+
+Use:
+
+"Low"
+"Medium"
+"High"
+
+Default to "Medium" unless the note clearly indicates
+something is urgent or low priority.
+
+==================================================
 PROJECTS
-==============================
+==================================================
 
-Create a project only when the note reasonably describes a larger
-outcome involving multiple related tasks.
+A project is a larger outcome involving multiple related actions.
 
-Do NOT create unnecessary projects for simple tasks.
+Do NOT create a project for a normal standalone task.
 
+Example:
 
-==============================
+"Build my portfolio website. I need to redesign the homepage,
+update my resume and add my projects."
+
+This can reasonably produce:
+- one project
+- three tasks
+
+==================================================
 GOALS
-==============================
+==================================================
 
-Create a goal when the user describes a longer-term desired outcome,
-target, milestone, or achievement.
+A goal represents a larger desired result or milestone.
 
-Do not turn ordinary one-time tasks into goals.
+Example:
 
+"I want to save $10,000 by July."
 
-==============================
-IMPORTANT RULES
-==============================
+can be a goal.
 
-1. Do not invent commitments.
+Do NOT classify normal errands or reminders as goals.
 
-2. Do not discard clearly actionable statements.
+==================================================
+FINAL VALIDATION
+==================================================
 
-3. Preserve every explicitly stated date.
+Before returning your answer, silently check:
 
-4. If multiple dates apply to one action, create one task per date.
+1. How many actions did the user explicitly request?
+2. How many dates did the user explicitly mention?
+3. Did I preserve every action?
+4. Did I preserve every date?
+5. If one action had multiple dates, did I create multiple tasks?
+6. Did I convert relative dates to actual YYYY-MM-DD dates?
+7. Did I preserve explicit times?
+8. Did I avoid inventing tasks?
 
-5. Resolve relative dates using CURRENT DATE.
+If any explicit action or date is missing, FIX THE OUTPUT
+before returning it.
+    `.trim(),
 
-6. Return dates in YYYY-MM-DD format.
+    input: note.trim(),
 
-7. If no date can reasonably be determined, use null.
+    text: {
+      format: {
+        type: "json_schema",
+        name: "tray_tasks_note_analysis",
+        strict: true,
+        schema: {
+          type: "object",
+          additionalProperties: false,
 
-8. Do not invent a specific time unless the user supplies one.
+          properties: {
+            summary: {
+              type: "string",
+            },
 
-9. Do not invent a project or goal merely to fill the arrays.
+            tasks: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
 
-10. Return valid JSON only.
+                properties: {
+                  title: {
+                    type: "string",
+                  },
 
-11. Do not include Markdown.
+                  details: {
+                    type: "string",
+                  },
 
-12. Do not wrap JSON in code fences.
+                  priority: {
+                    type: "string",
+                    enum: ["Low", "Medium", "High"],
+                  },
 
+                  date: {
+                    type: ["string", "null"],
+                  },
 
-==============================
-OUTPUT
-==============================
+                  project: {
+                    type: ["string", "null"],
+                  },
 
-Return exactly this top-level structure:
+                  startTime: {
+                    type: ["string", "null"],
+                  },
 
-{
-  "summary": "",
-  "tasks": [],
-  "projects": [],
-  "goals": []
+                  estimatedMinutes: {
+                    type: ["number", "null"],
+                  },
+
+                  frequency: {
+                    type: ["string", "null"],
+                  },
+
+                  frequencyDays: {
+                    type: "array",
+                    items: {
+                      type: "string",
+                    },
+                  },
+                },
+
+                required: [
+                  "title",
+                  "details",
+                  "priority",
+                  "date",
+                  "project",
+                  "startTime",
+                  "estimatedMinutes",
+                  "frequency",
+                  "frequencyDays",
+                ],
+              },
+            },
+
+            projects: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+
+                properties: {
+                  title: {
+                    type: "string",
+                  },
+
+                  details: {
+                    type: "string",
+                  },
+                },
+
+                required: [
+                  "title",
+                  "details",
+                ],
+              },
+            },
+
+            goals: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+
+                properties: {
+                  title: {
+                    type: "string",
+                  },
+
+                  details: {
+                    type: "string",
+                  },
+
+                  deadline: {
+                    type: ["string", "null"],
+                  },
+                },
+
+                required: [
+                  "title",
+                  "details",
+                  "deadline",
+                ],
+              },
+            },
+          },
+
+          required: [
+            "summary",
+            "tasks",
+            "projects",
+            "goals",
+          ],
+        },
+      },
+    },
+  });
+
+  console.log("OpenAI output:", response.output_text);
+
+  let result;
+
+  try {
+    result = JSON.parse(response.output_text);
+  } catch (error) {
+    console.error(
+      "Could not parse OpenAI response:",
+      response.output_text
+    );
+
+    return res.status(502).json({
+      error: "AI returned an invalid response.",
+    });
+  }
+
+  console.log("Parsed Tray Tasks result:", result);
+
+  return res.status(200).json(result);
 }
-      `.trim(),
-    },
-
-    {
-      role: "user",
-      content: note,
-    },
-  ],
-});
-
-        let result;
-
-        try {
-          result = JSON.parse(response.output_text);
-        } catch {
-          result = {
-            summary: response.output_text,
-            tasks: [],
-            projects: [],
-            goals: [],
-          };
-        }
-
-        return res.json(result);
-      }
-
       // -------------------------
       // Plan Day
       // -------------------------
