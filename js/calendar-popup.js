@@ -160,6 +160,35 @@ function getItemsForDate(date) {
 
 }
 
+/* =========================================================
+   HTML SAFETY
+========================================================= */
+
+function escapeHTML(value = "") {
+
+  return String(value)
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
+
+}
 
 /* =========================================================
    RENDER MONTH
