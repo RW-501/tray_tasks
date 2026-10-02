@@ -14,7 +14,7 @@ let selectedDate = new Date();
 
 let calendarModal = null;
 
-let eventModal = null;
+let taskModal = null;
 
 
 /* =========================================================
@@ -954,7 +954,7 @@ async function saveEvent(event) {
        CLOSE EVENT MODAL
     =================================================== */
 
-    eventModal.hide();
+    taskModal.hide();
 
 
     /* ===================================================
@@ -1118,7 +1118,7 @@ function updateEventTimeFields() {
    OPEN NEW EVENT MODAL
 ========================================================= */
 
-function openEventModal() {
+function opentaskModal() {
 
   const form =
     document.getElementById(
@@ -1142,7 +1142,7 @@ function openEventModal() {
 
   const modalLabel =
     document.getElementById(
-      "eventModalLabel"
+      "taskModalLabel"
     );
 
   const saveButton =
@@ -1212,14 +1212,14 @@ function openEventModal() {
 
   /* SHOW MODAL */
 
-  eventModal.show();
+  taskModal.show();
 
 
   /* FOCUS TITLE AFTER MODAL OPENS */
 
   const modalElement =
     document.getElementById(
-      "eventModal"
+      "taskModal"
     );
 
 
@@ -1277,15 +1277,15 @@ export function initCalendarPopup(store) {
     );
 
 
-  const eventModalElement =
+  const taskModalElement =
     document.getElementById(
-      "eventModal"
+      "taskModal"
     );
 
 
   if (
     !calendarModalElement ||
-    !eventModalElement
+    !taskModalElement
   ) {
 
     console.error(
@@ -1303,9 +1303,9 @@ export function initCalendarPopup(store) {
     );
 
 
-  eventModal =
+  taskModal =
     bootstrap.Modal.getOrCreateInstance(
-      eventModalElement
+      taskModalElement
     );
 
 
@@ -1501,7 +1501,7 @@ export function initCalendarPopup(store) {
 
     addEventButton.addEventListener(
       "click",
-      openEventModal
+      opentaskModal
     );
 
   }
@@ -1521,7 +1521,7 @@ export function initCalendarPopup(store) {
 
     addForDayButton.addEventListener(
       "click",
-      openEventModal
+      opentaskModal
     );
 
   }
@@ -1600,7 +1600,7 @@ export function initCalendarPopup(store) {
          * showing delete confirmation.
          */
 
-        eventModal.hide();
+        taskModal.hide();
 
 
         requestDelete({
@@ -1709,7 +1709,7 @@ function openExistingEvent(event) {
 
   const modalLabel =
     document.getElementById(
-      "eventModalLabel"
+      "taskModalLabel"
     );
 
 
@@ -1820,7 +1820,7 @@ function openExistingEvent(event) {
      SHOW MODAL
   ===================================================== */
 
-  eventModal.show();
+  taskModal.show();
 
 
   /* =====================================================
@@ -1829,7 +1829,7 @@ function openExistingEvent(event) {
 
   const modalElement =
     document.getElementById(
-      "eventModal"
+      "taskModal"
     );
 
 
