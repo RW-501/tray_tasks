@@ -1,732 +1,89 @@
-import { store } from "./store.js";
-import { initCalendarPopup } from "./calendar-popup.js";
-import { initDeleteManager, requestDelete } from "./delete-manager.js";
+import { store } from './store.js';
+import { initCalendarPopup, renderCalendar } from './calendar-popup.js';
+import { initDeleteManager, requestDelete } from './delete-manager.js';
+import { iso, occursOn, isOccurrenceComplete, taskOccurrencesForDate, recurrenceLabel } from './recurrence.js';
 
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const uid=()=>crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const esc=(v='')=>String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const parse=s=>new Date(`${s}T12:00:00`); const todayISO=()=>iso(new Date());
+const state={selectedDate:new Date(),filter:'all',search:'',advanced:{text:'',category:'',priority:'',status:'',goalId:'',frequency:''}};
+const selectedISO=()=>iso(state.selectedDate);
+const toast=m=>{const e=$('#toast'); if(!e)return console.info(m); e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2200)};
+const fmtTime=v=>{if(!v)return'';let[h,m]=v.split(':').map(Number);return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`};
+const taskForDate=()=>taskOccurrencesForDate(store.data.tasks,selectedISO());
+const goalById=id=>store.getById('goals',id);
 
-const state = {
-  selectedDate: new Date(),
-  filter: "all",
-  search: ""
-};
-
-const ITEM_CONFIG = {
-  note: {
-    collection: "notes",
-    singular: "Note",
-    titleLabel: "Title",
-    titlePlaceholder: "Capture an idea...",
-    showDetails: true,
-    detailsLabel: "Note",
-    detailsPlaceholder: "Write the full note here...",
-    showDate: false,
-    showFrequency: false,
-    showQuantity: false,
-    checkable: false
-  },
-  habit: {
-    collection: "habits",
-    singular: "Habit",
-    titleLabel: "Habit",
-    titlePlaceholder: "Drink water, work out, read...",
-    showDetails: true,
-    detailsLabel: "Notes",
-    detailsPlaceholder: "Optional habit notes...",
-    showDate: false,
-    showFrequency: true,
-    showQuantity: false,
-    checkable: true
-  },
-  goal: {
-    collection: "goals",
-    singular: "Goal",
-    titleLabel: "Goal",
-    titlePlaceholder: "What do you want to accomplish?",
-    showDetails: true,
-    detailsLabel: "Details",
-    detailsPlaceholder: "Add milestones, context, or next steps...",
-    showDate: true,
-    showFrequency: false,
-    showQuantity: false,
-    checkable: true
-  },
-  shopping: {
-    collection: "shopping",
-    singular: "Shopping Item",
-    titleLabel: "Item",
-    titlePlaceholder: "What do you need to buy?",
-    showDetails: true,
-    detailsLabel: "Store / notes",
-    detailsPlaceholder: "Brand, store, size, link, or notes...",
-    showDate: false,
-    showFrequency: false,
-    showQuantity: true,
-    checkable: true
-  }
-};
-
-const pad = (value) => String(value).padStart(2, "0");
-const iso = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-const selectedISO = () => iso(state.selectedDate);
-const dateFromISO = (value) => new Date(`${value}T12:00:00`);
-const uid = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-function esc(value = "") {
-  return String(value).replace(/[&<>'"]/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "'": "&#39;",
-    '"': "&quot;"
-  })[character]);
-}
-
-function setText(selector, value) {
-  const element = $(selector);
-  if (element) element.textContent = value;
-}
-
-function setValue(selector, value) {
-  const element = $(selector);
-  if (element) element.value = value ?? "";
-}
-
-function toast(message) {
-  const element = $("#toast");
-  if (!element) {
-    console.info(message);
-    return;
-  }
-  element.textContent = message;
-  element.classList.add("show");
-  window.setTimeout(() => element.classList.remove("show"), 1800);
-}
-
-function startOfWeek(date) {
-  const result = new Date(date);
-  result.setHours(12, 0, 0, 0);
-  result.setDate(result.getDate() - ((result.getDay() + 6) % 7));
-  return result;
-}
-
-function formatTime(value) {
-  if (!value) return "";
-  let [hours, minutes] = value.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12 || 12;
-  return `${hours}:${pad(minutes)} ${period}`;
-}
-
-function mins(totalMinutes) {
-  const hours = Math.floor(totalMinutes / 60) % 24;
-  const minutes = totalMinutes % 60;
-  return `${hours % 12 || 12}:${pad(minutes)} ${hours >= 12 ? "PM" : "AM"}`;
-}
-
-function tasksForDate() {
-  return (store.data.tasks || []).filter((task) => task.date === selectedISO());
-}
-
-function filteredTasks() {
-  return tasksForDate()
-    .filter((task) => {
-      const priority = String(task.priority || "").toLowerCase();
-      const matchesFilter =
-        state.filter === "all" ||
-        (state.filter === "completed" ? Boolean(task.completed) : priority === state.filter);
-      const haystack = `${task.title || ""} ${task.category || ""} ${task.notes || ""}`.toLowerCase();
-      const matchesSearch = !state.search || haystack.includes(state.search);
-      return matchesFilter && matchesSearch;
-    })
-    .sort((a, b) => {
-      const completed = Number(Boolean(a.completed)) - Number(Boolean(b.completed));
-      if (completed) return completed;
-      return (a.startTime || "99:99").localeCompare(b.startTime || "99:99");
-    });
-}
-
-function render() {
-  renderHeader();
-  renderWeek();
-  renderTasks();
-  renderTimeline();
-  renderSide();
-  renderUniversalLists();
-}
-
-function renderHeader() {
-  const date = state.selectedDate;
-  setText("#pageTitle", date.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }));
-  setText("#focusDate", date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }));
-  setText("#syncText", store.mode === "firebase" ? "Firebase connected" : "Local demo mode");
-  $("#syncDot")?.classList.toggle("online", store.mode === "firebase");
-}
-
-function renderWeek() {
-  const container = $("#weekStrip");
-  if (!container) return;
-
-  const start = startOfWeek(state.selectedDate);
-  container.innerHTML = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    const dateISO = iso(date);
-    const tasks = (store.data.tasks || []).filter((task) => task.date === dateISO);
-    const done = tasks.filter((task) => task.completed).length;
-    const percent = tasks.length ? (done / tasks.length) * 100 : 0;
-
-    return `
-      <button class="day-card ${dateISO === selectedISO() ? "selected" : ""}" data-date="${dateISO}" type="button">
-        <strong>${date.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase()}</strong>
-        <span>${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-        <span>${done}/${tasks.length} done</span>
-        <div class="day-progress"><i style="width:${percent}%"></i></div>
-      </button>
-    `;
-  }).join("");
-
-  $$(".day-card").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.selectedDate = dateFromISO(button.dataset.date);
-      render();
-    });
+function completionForGoal(goal){
+  const linked=(store.data.tasks||[]).filter(t=>t.goalId===goal.id);
+  if(!linked.length) return Number(goal.manualProgress)||0;
+  let total=0,done=0; const now=todayISO();
+  linked.forEach(t=>{
+    if(t.frequency && t.frequency!=='Once'){
+      const start=parse(t.date), end=parse([t.frequencyEndDate||now, now].sort()[0]);
+      for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){const di=iso(d);if(occursOn(t,di)){total++;if(isOccurrenceComplete(t,di))done++;}}
+    }else{total++;if(t.completed)done++;}
   });
+  return total?Math.round(done/total*100):0;
 }
 
-function renderTasks() {
-  const container = $("#taskList");
-  if (!container) return;
+function render(){renderHeader();renderRollover();renderWeek();renderTasks();renderTimeline();renderGoals();renderProjects();renderHabits();renderNotes();renderShopping();renderWorkouts();renderStats();}
+function renderHeader(){
+  $('#pageTitle').textContent=state.selectedDate.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+  $('#focusDate').textContent=state.selectedDate.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  $('#syncText').textContent=store.mode==='firebase'?'Firebase connected':'Local demo mode'; $('#syncDot').classList.toggle('online',store.mode==='firebase');
+}
+function renderRollover(){
+  const box=$('#rolloverAlert'), list=$('#rolloverList'); if(!box||!list)return;
+  const today=todayISO(); const overdue=(store.data.tasks||[]).filter(t=>t.date<today && !t.completed && (!t.frequency||t.frequency==='Once'));
+  box.classList.toggle('d-none',!overdue.length); if(!overdue.length)return;
+  list.innerHTML=overdue.slice(0,6).map(t=>`<div class="rollover-item"><span><strong>${esc(t.title)}</strong><small>Due ${esc(t.date)}</small></span><button class="btn btn-sm btn-outline-light" data-roll="${t.id}">Move to today</button></div>`).join('');
+  $$('[data-roll]').forEach(b=>b.onclick=async()=>{const t=store.getById('tasks',b.dataset.roll);if(t){await store.upsert('tasks',{...t,date:today,updatedAt:Date.now()});render();toast('Task moved to today')}});
+}
+function renderWeek(){const c=$('#weekStrip');const d=new Date(state.selectedDate);d.setDate(d.getDate()-((d.getDay()+6)%7));c.innerHTML=Array.from({length:7},(_,i)=>{const x=new Date(d);x.setDate(d.getDate()+i);const di=iso(x),ts=taskOccurrencesForDate(store.data.tasks,di),done=ts.filter(t=>t.completed).length;return `<button class="day-card ${di===selectedISO()?'selected':''}" data-date="${di}"><strong>${x.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</strong><span>${x.toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span><span>${done}/${ts.length} done</span><div class="day-progress"><i style="width:${ts.length?done/ts.length*100:0}%"></i></div></button>`}).join('');$$('.day-card').forEach(b=>b.onclick=()=>{state.selectedDate=parse(b.dataset.date);render()})}
+function filteredToday(){return taskForDate().filter(t=>{const p=(t.priority||'').toLowerCase();const f=state.filter==='all'||(state.filter==='completed'?t.completed:p===state.filter);const s=!state.search||`${t.title} ${t.category} ${t.notes}`.toLowerCase().includes(state.search);return f&&s}).sort((a,b)=>Number(a.completed)-Number(b.completed)||(a.startTime||'99:99').localeCompare(b.startTime||'99:99'))}
+function renderTasks(){const all=taskForDate(),list=filteredToday();['All','High','Medium','Low'].forEach(k=>{const e=$(`#count${k}`);if(e)e.textContent=k==='All'?all.length:all.filter(t=>t.priority===k).length});$('#countDone').textContent=all.filter(t=>t.completed).length;
+  $('#taskList').innerHTML=list.map(t=>`<div class="task-row" data-id="${t.id}"><input class="task-check" type="checkbox" ${t.completed?'checked':''}><div class="task-copy"><span class="task-title ${t.completed?'done':''}">${esc(t.title)}</span><small>${esc(t.category||'Personal')}${t.goalId?` · 🎯 ${esc(goalById(t.goalId)?.title||'Goal')}`:''}${t.frequency&&t.frequency!=='Once'?` · ↻ ${esc(recurrenceLabel(t))}`:''}</small></div><span class="badge-soft priority-${(t.priority||'Medium').toLowerCase()}">${esc(t.priority||'Medium')}</span><button class="task-menu"><i class="bi bi-three-dots-vertical"></i></button></div>`).join('');$('#emptyTasks').classList.toggle('d-none',!!list.length);
+  $$('.task-row').forEach(r=>{const t=store.getById('tasks',r.dataset.id);r.querySelector('.task-check').onchange=async e=>{if(t.frequency&&t.frequency!=='Once'){const set=new Set(t.completedDates||[]);e.target.checked?set.add(selectedISO()):set.delete(selectedISO());await store.upsert('tasks',{...t,completedDates:[...set],updatedAt:Date.now()})}else await store.upsert('tasks',{...t,completed:e.target.checked,updatedAt:Date.now()});render();renderCalendar()};r.querySelector('.task-menu').onclick=()=>openTask(t)});
+}
+function renderTimeline(){const list=taskForDate().filter(t=>t.startTime&&!t.completed).sort((a,b)=>a.startTime.localeCompare(b.startTime));$('#timeline').innerHTML=list.length?list.map(t=>`<button class="time-block timeline-task" data-id="${t.id}"><div class="time-label">${fmtTime(t.startTime)}</div><div class="task ${(t.priority||'Medium').toLowerCase()}"><strong>${esc(t.title)}</strong><br><small>${t.estimatedMinutes||30} min · ${esc(t.category||'Personal')}</small></div></button>`).join(''):`<div class="empty-state compact-empty"><i class="bi bi-calendar2-check"></i><p>No scheduled tasks.</p></div>`;$$('.timeline-task').forEach(b=>b.onclick=()=>openTask(store.getById('tasks',b.dataset.id)))}
+function renderStats(){const start=new Date(state.selectedDate);start.setDate(start.getDate()-((start.getDay()+6)%7));let total=0,done=0,high=0;for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ts=taskOccurrencesForDate(store.data.tasks,iso(d));total+=ts.length;done+=ts.filter(t=>t.completed).length;high+=ts.filter(t=>!t.completed&&t.priority==='High').length}const p=total?Math.round(done/total*100):0;$('#progressPercent').textContent=`${p}%`;$('#progressBar').style.width=`${p}%`;$('#doneStat').textContent=done;$('#openStat').textContent=total-done;$('#highStat').textContent=high}
+function renderGoals(){const c=$('#goalList');c.innerHTML=(store.data.goals||[]).slice(0,6).map(g=>{const p=completionForGoal(g);return `<button class="rich-item" data-goal="${g.id}"><span><strong>${esc(g.title)}</strong><small>${g.targetDate?`Deadline ${esc(g.targetDate)} · `:''}${p}% complete</small></span><span class="mini-progress"><i style="width:${p}%"></i></span></button>`}).join('')||'<p class="muted">No goals yet.</p>';$$('[data-goal]').forEach(b=>b.onclick=()=>openItem('goal',store.getById('goals',b.dataset.goal)))}
+function renderProjects(){renderSimple('projects','#projectList','project')}
+function renderHabits(){renderSimple('habits','#habitList','habit')}
+function renderShopping(){renderSimple('shopping','#shoppingList','shopping')}
+function renderSimple(collection,selector,type){const c=$(selector);c.innerHTML=(store.data[collection]||[]).slice(0,7).map(x=>`<button class="rich-item" data-simple="${type}:${x.id}"><span><strong>${esc(x.title)}</strong><small>${esc(x.details||x.frequency||'')}</small></span></button>`).join('')||'<p class="muted">Nothing here yet.</p>';$$(`[data-simple^="${type}:"]`).forEach(b=>b.onclick=()=>openItem(type,store.getById(collection,b.dataset.simple.split(':')[1])))}
+function renderNotes(){const c=$('#notesList');c.innerHTML=(store.data.notes||[]).slice(0,5).map(n=>`<button class="note-item" data-note="${n.id}"><i class="bi bi-lightbulb"></i><span><strong>${esc(n.title)}</strong><small>${esc((n.details||'').slice(0,90))}</small></span></button>`).join('')||'<p class="muted">Capture an idea and let AI turn it into action.</p>';$$('[data-note]').forEach(b=>b.onclick=()=>openItem('note',store.getById('notes',b.dataset.note)))}
+function renderWorkouts(){const c=$('#workoutList');c.innerHTML=(store.data.workouts||[]).slice(0,5).map(w=>`<button class="rich-item" data-workout="${w.id}"><span><strong>${esc(w.title)}</strong><small>${esc(w.schedule||'Any day')} · ${(w.exercises||[]).length} exercises</small></span></button>`).join('')||'<p class="muted">Add your first workout routine.</p>';$$('[data-workout]').forEach(b=>b.onclick=()=>openWorkout(store.getById('workouts',b.dataset.workout)))}
 
-  const all = tasksForDate();
-  const list = filteredTasks();
+function fillGoalSelect(){const s=$('#taskGoal');s.innerHTML='<option value="">No linked goal</option>'+(store.data.goals||[]).map(g=>`<option value="${g.id}">${esc(g.title)}</option>`).join('')}
+function frequencyUI(){const f=$('#taskFrequency').value;$('#frequencyOptions').classList.toggle('d-none',f==='Once');$('#weeklyDays').classList.toggle('d-none',f!=='Weekly')}
+function openTask(t=null,date=selectedISO()){fillGoalSelect();$('#taskForm').reset();$('#taskId').value=t?.id||'';$('#taskTitle').value=t?.title||'';$('#taskDate').value=t?.date||date;$('#taskTime').value=t?.startTime||'';$('#taskDuration').value=t?.estimatedMinutes||30;$('#taskPriority').value=t?.priority||'Medium';$('#taskCategory').value=t?.category||'Personal';$('#taskGoal').value=t?.goalId||'';$('#taskNotes').value=t?.notes||'';$('#taskFrequency').value=t?.frequency||'Once';$('#taskFrequencyInterval').value=t?.frequencyInterval||1;$('#taskFrequencyEnd').value=t?.frequencyEndDate||'';$$('[name="frequencyDay"]').forEach(x=>x.checked=(t?.frequencyDays||[]).includes(Number(x.value)));$('#taskModalLabel').textContent=t?'Edit Task':'Add Task';$('#deleteTaskBtn').classList.toggle('d-none',!t);frequencyUI();bootstrap.Modal.getOrCreateInstance($('#taskModal')).show()}
+async function saveTask(e){e.preventDefault();const id=$('#taskId').value,old=id?store.getById('tasks',id):null,title=$('#taskTitle').value.trim();if(!title)return $('#taskError').textContent='Task title is required.';const file=$('#taskAttachment').files[0];let attachments=old?.attachments||[];try{if(file)attachments=[...attachments,await store.uploadAttachment(file,'task-attachments')];const item={...old,id:id||uid(),title,date:$('#taskDate').value,startTime:$('#taskTime').value,estimatedMinutes:Number($('#taskDuration').value)||30,priority:$('#taskPriority').value,category:$('#taskCategory').value,goalId:$('#taskGoal').value,notes:$('#taskNotes').value.trim(),frequency:$('#taskFrequency').value,frequencyInterval:Number($('#taskFrequencyInterval').value)||1,frequencyDays:$$('[name="frequencyDay"]:checked').map(x=>Number(x.value)),frequencyEndDate:$('#taskFrequencyEnd').value,completed:old?.completed||false,completedDates:old?.completedDates||[],attachments,createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()};await store.upsert('tasks',item);bootstrap.Modal.getInstance($('#taskModal')).hide();render();renderCalendar();toast(old?'Task updated':'Task added')}catch(err){console.error(err);$('#taskError').textContent=err.message||'Unable to save task.'}}
+function deleteTask(){const t=store.getById('tasks',$('#taskId').value);if(!t)return;bootstrap.Modal.getInstance($('#taskModal'))?.hide();setTimeout(()=>requestDelete({type:'tasks',id:t.id,title:t.title,afterDelete:()=>{render();renderCalendar()}}),250)}
 
-  setText("#countAll", all.length);
-  setText("#countHigh", all.filter((task) => task.priority === "High").length);
-  setText("#countMedium", all.filter((task) => task.priority === "Medium").length);
-  setText("#countLow", all.filter((task) => task.priority === "Low").length);
-  setText("#countDone", all.filter((task) => task.completed).length);
+const itemConfig={note:['notes','Note'],habit:['habits','Habit'],goal:['goals','Goal'],project:['projects','Project'],shopping:['shopping','Shopping Item']};
+function openItem(type,item=null){const [col,label]=itemConfig[type];$('#itemForm').reset();$('#itemType').value=type;$('#itemId').value=item?.id||'';$('#itemTitle').value=item?.title||'';$('#itemDetails').value=item?.details||'';$('#itemDate').value=item?.targetDate||'';$('#itemFrequency').value=item?.frequency||'Daily';$('#itemQuantity').value=item?.quantity||1;$('#itemManualProgress').value=item?.manualProgress||0;$('#itemModalLabel').textContent=`${item?'Edit':'Add'} ${label}`;$('#itemDateGroup').classList.toggle('d-none',type!=='goal');$('#itemProgressGroup').classList.toggle('d-none',type!=='goal');$('#itemFrequencyGroup').classList.toggle('d-none',type!=='habit');$('#itemQuantityGroup').classList.toggle('d-none',type!=='shopping');$('#aiNoteGroup').classList.toggle('d-none',type!=='note');$('#deleteItemBtn').classList.toggle('d-none',!item);$('#aiSuggestions').innerHTML='';bootstrap.Modal.getOrCreateInstance($('#itemModal')).show()}
+async function saveItem(e){e.preventDefault();const type=$('#itemType').value,[col,label]=itemConfig[type],id=$('#itemId').value,old=id?store.getById(col,id):null,title=$('#itemTitle').value.trim();if(!title)return $('#itemError').textContent='Title is required.';try{let attachments=old?.attachments||[],file=$('#itemAttachment').files[0];if(file)attachments=[...attachments,await store.uploadAttachment(file,`${type}-attachments`)];const item={...old,id:id||uid(),title,details:$('#itemDetails').value.trim(),targetDate:type==='goal'?$('#itemDate').value:'',manualProgress:type==='goal'?Number($('#itemManualProgress').value)||0:0,frequency:type==='habit'?$('#itemFrequency').value:'',quantity:type==='shopping'?Number($('#itemQuantity').value)||1:null,attachments,createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()};await store.upsert(col,item);bootstrap.Modal.getInstance($('#itemModal')).hide();render();toast(`${label} saved`)}catch(err){$('#itemError').textContent=err.message||'Unable to save.'}}
+function deleteItem(){const type=$('#itemType').value,[col]=itemConfig[type],x=store.getById(col,$('#itemId').value);if(!x)return;bootstrap.Modal.getInstance($('#itemModal'))?.hide();setTimeout(()=>requestDelete({type:col,id:x.id,title:x.title,afterDelete:render}),250)}
+async function analyzeNote(){const text=$('#itemDetails').value.trim(),title=$('#itemTitle').value.trim();if(!text)return toast('Write the note first.');const box=$('#aiSuggestions');box.innerHTML='<div class="ai-step">Reasoning through your note…</div>';try{const r=await fetch('/api/analyze-note',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,text})});if(!r.ok)throw new Error('AI endpoint unavailable');const data=await r.json();const actions=data.actions||[];box.innerHTML=actions.length?actions.map((a,i)=>`<label class="ai-suggestion"><input type="checkbox" checked data-ai-index="${i}"><span><strong>${esc(a.title)}</strong><small>${esc(a.type||'task')} · ${esc(a.category||'Personal')} · ${esc(a.reason||'')}</small></span></label>`).join('')+'<button id="createAiActions" class="btn btn-neon btn-sm mt-2" type="button">Create selected actions</button>':'<div class="ai-step">This looks like a reference note; no task is necessary.</div>';$('#createAiActions')?.addEventListener('click',()=>createAiActions(actions))}catch(err){box.innerHTML='<div class="ai-step">AI analysis is unavailable. Make sure your Node API is running and OPENAI_API_KEY is configured.</div>'}}
+async function createAiActions(actions){for(const cb of $$('[data-ai-index]:checked')){const a=actions[Number(cb.dataset.aiIndex)];if(a.type==='goal'){await store.upsert('goals',{id:uid(),title:a.title,details:a.reason||'',targetDate:a.deadline||'',manualProgress:0,createdAt:Date.now(),updatedAt:Date.now()})}else if(a.type==='project'){await store.upsert('projects',{id:uid(),title:a.title,details:a.reason||'',createdAt:Date.now(),updatedAt:Date.now()})}else{await store.upsert('tasks',{id:uid(),title:a.title,date:a.date||todayISO(),startTime:'',estimatedMinutes:a.estimatedMinutes||30,priority:a.priority||'Medium',category:a.category||'Personal',notes:a.reason||'',goalId:'',frequency:'Once',frequencyInterval:1,frequencyDays:[],frequencyEndDate:'',completed:false,completedDates:[],createdAt:Date.now(),updatedAt:Date.now()})}}render();toast('AI actions created');$('#aiSuggestions').innerHTML='<div class="ai-step">Created. Review them on your dashboard.</div>'}
 
-  container.innerHTML = list.map((task) => {
-    const priority = String(task.priority || "Medium");
-    return `
-      <div class="task-row" data-id="${task.id}">
-        <input class="task-check" type="checkbox" ${task.completed ? "checked" : ""} aria-label="Complete ${esc(task.title)}">
-        <span class="task-title ${task.completed ? "done" : ""}" title="${esc(task.title)}">${esc(task.title)}</span>
-        <span class="badge-soft priority-${priority.toLowerCase()}">${esc(priority)}</span>
-        <span class="badge-soft category">${esc(task.category || "Personal")}</span>
-        <button class="task-menu" type="button" aria-label="Edit ${esc(task.title)}"><i class="bi bi-three-dots-vertical"></i></button>
-      </div>
-    `;
-  }).join("");
+function openWorkout(w=null){$('#workoutForm').reset();$('#workoutId').value=w?.id||'';$('#workoutTitle').value=w?.title||'';$('#workoutSchedule').value=w?.schedule||'';$('#workoutExercises').value=(w?.exercises||[]).map(x=>`${x.name} | ${x.sets||''} | ${x.reps||''}`).join('\n');$('#workoutNotes').value=w?.notes||'';$('#deleteWorkoutBtn').classList.toggle('d-none',!w);bootstrap.Modal.getOrCreateInstance($('#workoutModal')).show()}
+async function saveWorkout(e){e.preventDefault();const id=$('#workoutId').value,old=id?store.getById('workouts',id):null,title=$('#workoutTitle').value.trim();if(!title)return;const exercises=$('#workoutExercises').value.split('\n').filter(Boolean).map(line=>{const [name,sets,reps]=line.split('|').map(s=>s.trim());return{name,sets,reps}});await store.upsert('workouts',{...old,id:id||uid(),title,schedule:$('#workoutSchedule').value.trim(),exercises,notes:$('#workoutNotes').value.trim(),createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()});bootstrap.Modal.getInstance($('#workoutModal')).hide();render();toast('Workout saved')}
+function deleteWorkout(){const x=store.getById('workouts',$('#workoutId').value);if(!x)return;bootstrap.Modal.getInstance($('#workoutModal'))?.hide();setTimeout(()=>requestDelete({type:'workouts',id:x.id,title:x.title,afterDelete:render}),250)}
 
-  $("#emptyTasks")?.classList.toggle("d-none", list.length > 0);
+function openSearch(){fillSearchFilters();renderSearchResults();bootstrap.Modal.getOrCreateInstance($('#searchModal')).show()}
+function fillSearchFilters(){$('#searchGoal').innerHTML='<option value="">All goals</option>'+(store.data.goals||[]).map(g=>`<option value="${g.id}">${esc(g.title)}</option>`).join('')}
+function renderSearchResults(){const a=state.advanced;const rows=(store.data.tasks||[]).filter(t=>(!a.text||`${t.title} ${t.notes}`.toLowerCase().includes(a.text.toLowerCase()))&&(!a.category||t.category===a.category)&&(!a.priority||t.priority===a.priority)&&(!a.goalId||t.goalId===a.goalId)&&(!a.frequency||t.frequency===a.frequency)&&(!a.status||(a.status==='done'?t.completed:!t.completed)));$('#searchResults').innerHTML=rows.map(t=>`<button class="search-result" data-search-task="${t.id}"><span><strong>${esc(t.title)}</strong><small>${esc(t.category||'Personal')} · ${esc(t.priority||'Medium')} · ${esc(recurrenceLabel(t))}</small></span><i class="bi bi-chevron-right"></i></button>`).join('')||'<p class="muted">No matching tasks.</p>';$$('[data-search-task]').forEach(b=>b.onclick=()=>{bootstrap.Modal.getInstance($('#searchModal')).hide();setTimeout(()=>openTask(store.getById('tasks',b.dataset.searchTask)),250)})}
+function initDrag(){const grid=$('#dashboardGrid'),key='dashboard-v3-order';const saved=JSON.parse(localStorage.getItem(key)||'[]');saved.forEach(id=>{const el=document.getElementById(id);if(el)grid.appendChild(el)});$$('#dashboardGrid > [data-widget]').forEach(el=>{el.draggable=true;el.addEventListener('dragstart',()=>el.classList.add('dragging'));el.addEventListener('dragend',()=>{el.classList.remove('dragging');localStorage.setItem(key,JSON.stringify($$('#dashboardGrid > [data-widget]').map(x=>x.id)))})});grid.addEventListener('dragover',e=>{e.preventDefault();const dragging=$('.dragging');if(!dragging)return;const candidates=$$('#dashboardGrid > [data-widget]:not(.dragging)');const after=candidates.find(x=>e.clientY<x.getBoundingClientRect().top+x.offsetHeight/2);after?grid.insertBefore(dragging,after):grid.appendChild(dragging)})}
 
-  $$(".task-row").forEach((row) => {
-    const task = (store.data.tasks || []).find((item) => item.id === row.dataset.id);
-    if (!task) return;
-
-    row.querySelector(".task-check")?.addEventListener("change", async (event) => {
-      const previous = Boolean(task.completed);
-      task.completed = event.target.checked;
-      task.updatedAt = Date.now();
-      try {
-        await store.upsert("tasks", task);
-        render();
-        toast(task.completed ? "Task completed" : "Task reopened");
-      } catch (error) {
-        console.error("Unable to update task:", error);
-        task.completed = previous;
-        event.target.checked = previous;
-        toast("Unable to update task");
-      }
-    });
-
-    row.querySelector(".task-menu")?.addEventListener("click", (event) => {
-      event.stopPropagation();
-      openTaskModal(task);
-    });
-  });
+function bind(){
+  $('#mobileMenu').onclick=()=>$('.sidebar').classList.toggle('open');$('#todayBtn').onclick=()=>{state.selectedDate=new Date();render()};$('#prevDay').onclick=()=>{state.selectedDate.setDate(state.selectedDate.getDate()-1);render()};$('#nextDay').onclick=()=>{state.selectedDate.setDate(state.selectedDate.getDate()+1);render()};
+  $('#globalSearch').oninput=e=>{state.search=e.target.value.trim().toLowerCase();renderTasks()};$$('.filter').forEach(b=>b.onclick=()=>{$$('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.filter=b.dataset.filter;renderTasks()});$$('[data-open-task]').forEach(b=>b.onclick=()=>openTask());$$('[data-add]').forEach(b=>b.onclick=()=>openItem(b.dataset.add));$('#quickNoteBtn').onclick=()=>openItem('note');$('#taskFrequency').onchange=frequencyUI;$('#taskForm').onsubmit=saveTask;$('#deleteTaskBtn').onclick=deleteTask;$('#itemForm').onsubmit=saveItem;$('#deleteItemBtn').onclick=deleteItem;$('#analyzeNoteBtn').onclick=analyzeNote;$('#addWorkoutBtn').onclick=()=>openWorkout();$('#workoutForm').onsubmit=saveWorkout;$('#deleteWorkoutBtn').onclick=deleteWorkout;$('#advancedSearchBtn').onclick=openSearch;$('#advancedSearchBtnTop').onclick=openSearch;$('#addWorkoutBtn2').onclick=()=>openWorkout();$$('[data-search-filter]').forEach(e=>e.oninput=()=>{state.advanced={text:$('#searchText').value,category:$('#searchCategory').value,priority:$('#searchPriority').value,status:$('#searchStatus').value,goalId:$('#searchGoal').value,frequency:$('#searchFrequency').value};renderSearchResults()});
+  $('#planDayBtn').onclick=async()=>{const box=$('#aiResult'),tasks=taskForDate().filter(t=>!t.completed);box.innerHTML='<div class="ai-step">Building your plan…</div>';try{const r=await fetch('/api/plan-day',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:selectedISO(),tasks})});const d=await r.json();box.innerHTML=`<div class="ai-step">${esc(d.plan||'No plan returned.')}</div>`}catch{box.innerHTML='<div class="ai-step">AI server unavailable. Your tasks are still saved.</div>'}};
+  window.addEventListener('calendar:add-task',e=>openTask(null,e.detail?.date||selectedISO()));window.addEventListener('calendar:edit-task',e=>{const t=store.getById('tasks',e.detail?.id);if(t)openTask(t)});
 }
 
-function renderTimeline() {
-  const timeline = $("#timeline");
-  if (!timeline) return;
-
-  const tasks = tasksForDate()
-    .filter((task) => task.startTime && !task.completed)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-  if (!tasks.length) {
-    timeline.innerHTML = `<div class="empty-state"><i class="bi bi-calendar2-check"></i><p>No scheduled tasks for this day.</p></div>`;
-    return;
-  }
-
-  timeline.innerHTML = tasks.map((task) => `
-    <button class="time-block timeline-task" type="button" data-task-id="${task.id}">
-      <div class="time-label">${formatTime(task.startTime)}</div>
-      <div class="event ${String(task.priority || "Medium").toLowerCase()}">
-        <strong>${esc(task.title)}</strong><br>
-        <small>${task.estimatedMinutes || 30} min · ${esc(task.category || "Task")}</small>
-      </div>
-    </button>
-  `).join("");
-
-  $$(".timeline-task").forEach((button) => {
-    button.addEventListener("click", () => {
-      const task = (store.data.tasks || []).find((item) => item.id === button.dataset.taskId);
-      if (task) openTaskModal(task);
-    });
-  });
-}
-
-function renderSide() {
-  const weekStart = startOfWeek(state.selectedDate);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-
-  const tasks = (store.data.tasks || []).filter((task) => {
-    if (!task.date) return false;
-    const date = dateFromISO(task.date);
-    return date >= weekStart && date < weekEnd;
-  });
-
-  const done = tasks.filter((task) => task.completed).length;
-  const percent = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-  setText("#progressPercent", `${percent}%`);
-  if ($("#progressBar")) $("#progressBar").style.width = `${percent}%`;
-  setText("#doneStat", done);
-  setText("#openStat", tasks.length - done);
-  setText("#highStat", tasks.filter((task) => task.priority === "High" && !task.completed).length);
-}
-
-function itemSubtitle(type, item) {
-  if (type === "goal" && item.targetDate) return `Target ${item.targetDate}`;
-  if (type === "habit" && item.frequency) return item.frequency;
-  if (type === "shopping" && item.quantity) return `Qty ${item.quantity}`;
-  if (type === "note" && item.details) return item.details;
-  if (item.details) return item.details;
-  return "";
-}
-
-function renderUniversalList(type, selector) {
-  const config = ITEM_CONFIG[type];
-  const container = $(selector);
-  if (!config || !container) return;
-
-  const items = store.data[config.collection] || [];
-
-  if (!items.length) {
-    container.innerHTML = `<div class="empty-state compact-empty"><p>No ${config.singular.toLowerCase()}s yet.</p></div>`;
-    return;
-  }
-
-  container.innerHTML = items.map((item) => {
-    const subtitle = itemSubtitle(type, item);
-    return `
-      <div class="simple-item universal-item ${item.completed ? "is-complete" : ""}" data-item-type="${type}" data-item-id="${item.id}">
-        ${config.checkable ? `<input class="simple-check" type="checkbox" ${item.completed ? "checked" : ""} aria-label="Complete ${esc(item.title)}">` : `<i class="bi bi-${type === "note" ? "sticky" : "circle"}"></i>`}
-        <button class="universal-item-main" type="button" aria-label="Edit ${esc(item.title)}">
-          <span class="universal-item-title ${item.completed ? "text-decoration-line-through opacity-50" : ""}">${esc(item.title)}</span>
-          ${subtitle ? `<small class="muted universal-item-subtitle">${esc(subtitle)}</small>` : ""}
-        </button>
-        <button class="mini-edit universal-item-edit" type="button" aria-label="Edit ${esc(item.title)}"><i class="bi bi-pencil"></i></button>
-      </div>
-    `;
-  }).join("");
-
-  container.querySelectorAll(".universal-item").forEach((row) => {
-    const item = items.find((entry) => entry.id === row.dataset.itemId);
-    if (!item) return;
-
-    row.querySelector(".simple-check")?.addEventListener("change", async (event) => {
-      const previous = Boolean(item.completed);
-      item.completed = event.target.checked;
-      item.updatedAt = Date.now();
-      try {
-        await store.upsert(config.collection, item);
-        renderUniversalLists();
-      } catch (error) {
-        console.error(`Unable to update ${type}:`, error);
-        item.completed = previous;
-        event.target.checked = previous;
-        toast(`Unable to update ${config.singular.toLowerCase()}`);
-      }
-    });
-
-    const edit = () => openItemModal(type, item);
-    row.querySelector(".universal-item-main")?.addEventListener("click", edit);
-    row.querySelector(".universal-item-edit")?.addEventListener("click", edit);
-  });
-}
-
-function renderUniversalLists() {
-  renderUniversalList("goal", "#goalList");
-  renderUniversalList("habit", "#habitList");
-  renderUniversalList("note", "#notesList");
-  renderUniversalList("shopping", "#shoppingList");
-}
-
-function resetTaskForm(date = selectedISO()) {
-  $("#taskForm")?.reset();
-  setValue("#taskId", "");
-  setValue("#taskDate", date);
-  setValue("#taskDuration", 30);
-  setValue("#taskPriority", "Medium");
-  setValue("#taskCategory", "Personal");
-  setText("#taskModalLabel", "Add Task");
-  setText("#taskError", "");
-  $("#deleteTaskBtn")?.classList.add("d-none");
-  if ($("#saveTaskBtn")) $("#saveTaskBtn").innerHTML = `<i class="bi bi-plus-lg"></i> Add Task`;
-}
-
-function openTaskModal(task = null, date = selectedISO()) {
-  const modalElement = $("#taskModal");
-  if (!modalElement) {
-    console.error('Task modal "#taskModal" was not found.');
-    return;
-  }
-
-  if (!task) {
-    resetTaskForm(date);
-  } else {
-    setValue("#taskId", task.id);
-    setValue("#taskTitle", task.title || "");
-    setValue("#taskDate", task.date || date);
-    setValue("#taskTime", task.startTime || "");
-    setValue("#taskDuration", task.estimatedMinutes || 30);
-    setValue("#taskPriority", task.priority || "Medium");
-    setValue("#taskCategory", task.category || "Personal");
-    setValue("#taskNotes", task.notes || "");
-    setText("#taskModalLabel", "Edit Task");
-    setText("#taskError", "");
-    $("#deleteTaskBtn")?.classList.remove("d-none");
-    if ($("#saveTaskBtn")) $("#saveTaskBtn").innerHTML = `<i class="bi bi-check2"></i> Update Task`;
-  }
-
-  bootstrap.Modal.getOrCreateInstance(modalElement).show();
-  modalElement.addEventListener("shown.bs.modal", () => $("#taskTitle")?.focus(), { once: true });
-}
-
-async function saveTask(event) {
-  event.preventDefault();
-  const errorElement = $("#taskError");
-  if (errorElement) errorElement.textContent = "";
-
-  const title = $("#taskTitle")?.value.trim();
-  const date = $("#taskDate")?.value;
-  if (!title || !date) {
-    if (errorElement) errorElement.textContent = "Task title and date are required.";
-    return;
-  }
-
-  const existingId = $("#taskId")?.value || "";
-  const existing = existingId ? (store.data.tasks || []).find((task) => task.id === existingId) : null;
-  if (existingId && !existing) {
-    if (errorElement) errorElement.textContent = "Unable to find this task. Refresh and try again.";
-    return;
-  }
-
-  const now = Date.now();
-  const item = {
-    ...existing,
-    id: existingId || uid(),
-    title,
-    date,
-    startTime: $("#taskTime")?.value || "",
-    estimatedMinutes: Number($("#taskDuration")?.value) || 30,
-    priority: $("#taskPriority")?.value || "Medium",
-    category: $("#taskCategory")?.value || "Personal",
-    notes: $("#taskNotes")?.value.trim() || "",
-    completed: existing?.completed || false,
-    createdAt: existing?.createdAt || now,
-    updatedAt: now
-  };
-
-  const saveButton = $("#saveTaskBtn");
-  const oldHTML = saveButton?.innerHTML;
-  if (saveButton) {
-    saveButton.disabled = true;
-    saveButton.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Saving...`;
-  }
-
-  try {
-    await store.upsert("tasks", item);
-    bootstrap.Modal.getInstance($("#taskModal"))?.hide();
-    if (item.date === selectedISO()) render();
-    else render();
-    toast(existing ? "Task updated" : "Task added");
-  } catch (error) {
-    console.error("Unable to save task:", error);
-    if (errorElement) errorElement.textContent = error?.code === "permission-denied" ? "Firebase denied permission to save this task." : "Unable to save task. Please try again.";
-  } finally {
-    if (saveButton) {
-      saveButton.disabled = false;
-      saveButton.innerHTML = oldHTML || `<i class="bi bi-check2"></i> Save Task`;
-    }
-  }
-}
-
-function deleteCurrentTask() {
-  const id = $("#taskId")?.value;
-  if (!id) return;
-  const task = (store.data.tasks || []).find((item) => item.id === id);
-  if (!task) return;
-
-  const modalElement = $("#taskModal");
-  const askForDelete = () => requestDelete({
-    type: "tasks",
-    id: task.id,
-    title: task.title,
-    afterDelete: () => {
-      render();
-      toast("Task deleted");
-    }
-  });
-
-  if (modalElement?.classList.contains("show")) {
-    modalElement.addEventListener("hidden.bs.modal", askForDelete, { once: true });
-    bootstrap.Modal.getInstance(modalElement)?.hide();
-  } else {
-    askForDelete();
-  }
-}
-
-function configureItemModal(type, item = null) {
-  const config = ITEM_CONFIG[type];
-  if (!config) return;
-
-  $("#itemForm")?.reset();
-  setValue("#itemType", type);
-  setValue("#itemId", item?.id || "");
-  setValue("#itemTitle", item?.title || "");
-  setValue("#itemDetails", item?.details || item?.notes || "");
-  setValue("#itemDate", item?.targetDate || "");
-  setValue("#itemFrequency", item?.frequency || "Daily");
-  setValue("#itemQuantity", item?.quantity || 1);
-  setText("#itemError", "");
-
-  setText("#itemModalEyebrow", type.toUpperCase());
-  setText("#itemModalLabel", `${item ? "Edit" : "Add"} ${config.singular}`);
-  setText("#itemTitleLabel", config.titleLabel);
-  setText("#itemDetailsLabel", config.detailsLabel);
-  $("#itemTitle")?.setAttribute("placeholder", config.titlePlaceholder);
-  $("#itemDetails")?.setAttribute("placeholder", config.detailsPlaceholder);
-
-  $("#itemDetailsGroup")?.classList.toggle("d-none", !config.showDetails);
-  $("#itemDateGroup")?.classList.toggle("d-none", !config.showDate);
-  $("#itemFrequencyGroup")?.classList.toggle("d-none", !config.showFrequency);
-  $("#itemQuantityGroup")?.classList.toggle("d-none", !config.showQuantity);
-  $("#deleteItemBtn")?.classList.toggle("d-none", !item);
-
-  if ($("#saveItemBtn")) {
-    $("#saveItemBtn").innerHTML = item
-      ? `<i class="bi bi-check2"></i> Update ${config.singular}`
-      : `<i class="bi bi-plus-lg"></i> Add ${config.singular}`;
-  }
-}
-
-function openItemModal(type, item = null) {
-  const modalElement = $("#itemModal");
-  if (!modalElement || !ITEM_CONFIG[type]) return;
-  configureItemModal(type, item);
-  bootstrap.Modal.getOrCreateInstance(modalElement).show();
-  modalElement.addEventListener("shown.bs.modal", () => $("#itemTitle")?.focus(), { once: true });
-}
-
-async function saveUniversalItem(event) {
-  event.preventDefault();
-  const type = $("#itemType")?.value;
-  const config = ITEM_CONFIG[type];
-  if (!config) return;
-
-  const errorElement = $("#itemError");
-  if (errorElement) errorElement.textContent = "";
-
-  const title = $("#itemTitle")?.value.trim();
-  if (!title) {
-    if (errorElement) errorElement.textContent = `${config.singular} title is required.`;
-    return;
-  }
-
-  const id = $("#itemId")?.value || "";
-  const items = store.data[config.collection] || [];
-  const existing = id ? items.find((item) => item.id === id) : null;
-  if (id && !existing) {
-    if (errorElement) errorElement.textContent = `Unable to find this ${config.singular.toLowerCase()}. Refresh and try again.`;
-    return;
-  }
-
-  const now = Date.now();
-  const item = {
-    ...existing,
-    id: id || uid(),
-    title,
-    details: $("#itemDetails")?.value.trim() || "",
-    targetDate: config.showDate ? ($("#itemDate")?.value || "") : (existing?.targetDate || ""),
-    frequency: config.showFrequency ? ($("#itemFrequency")?.value || "Daily") : (existing?.frequency || ""),
-    quantity: config.showQuantity ? Math.max(1, Number($("#itemQuantity")?.value) || 1) : (existing?.quantity || null),
-    completed: config.checkable ? Boolean(existing?.completed) : false,
-    createdAt: existing?.createdAt || now,
-    updatedAt: now
-  };
-
-  const saveButton = $("#saveItemBtn");
-  const oldHTML = saveButton?.innerHTML;
-  if (saveButton) {
-    saveButton.disabled = true;
-    saveButton.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Saving...`;
-  }
-
-  try {
-    await store.upsert(config.collection, item);
-    bootstrap.Modal.getInstance($("#itemModal"))?.hide();
-    renderUniversalLists();
-    toast(existing ? `${config.singular} updated` : `${config.singular} added`);
-  } catch (error) {
-    console.error(`Unable to save ${type}:`, error);
-    if (errorElement) errorElement.textContent = `Unable to save this ${config.singular.toLowerCase()}. Please try again.`;
-  } finally {
-    if (saveButton) {
-      saveButton.disabled = false;
-      saveButton.innerHTML = oldHTML || `<i class="bi bi-check2"></i> Save`;
-    }
-  }
-}
-
-function deleteUniversalItem() {
-  const type = $("#itemType")?.value;
-  const config = ITEM_CONFIG[type];
-  const id = $("#itemId")?.value;
-  if (!config || !id) return;
-
-  const item = (store.data[config.collection] || []).find((entry) => entry.id === id);
-  if (!item) return;
-
-  const modalElement = $("#itemModal");
-  const askForDelete = () => requestDelete({
-    type: config.collection,
-    id: item.id,
-    title: item.title,
-    afterDelete: () => {
-      renderUniversalLists();
-      toast(`${config.singular} deleted`);
-    }
-  });
-
-  if (modalElement?.classList.contains("show")) {
-    modalElement.addEventListener("hidden.bs.modal", askForDelete, { once: true });
-    bootstrap.Modal.getInstance(modalElement)?.hide();
-  } else {
-    askForDelete();
-  }
-}
-
-function buildPlan() {
-  const result = $("#aiResult");
-  if (!result) return;
-
-  const rank = { High: 0, Medium: 1, Low: 2 };
-  const tasks = tasksForDate()
-    .filter((task) => !task.completed)
-    .sort((a, b) => (rank[a.priority] ?? 99) - (rank[b.priority] ?? 99) || (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
-
-  if (!tasks.length) {
-    result.innerHTML = `<div class="ai-step">Everything for this day is complete.</div>`;
-    return;
-  }
-
-  let cursor = 8 * 60 + 30;
-  result.innerHTML = tasks.slice(0, 8).map((task) => {
-    if (task.startTime) {
-      const [hours, minutes] = task.startTime.split(":").map(Number);
-      cursor = Math.max(cursor, hours * 60 + minutes);
-    }
-    const start = cursor;
-    cursor += (Number(task.estimatedMinutes) || 30) + 10;
-    return `<div class="ai-step"><strong>${mins(start)}</strong> — ${esc(task.title)} <span class="muted">(${esc(task.priority || "Medium")})</span></div>`;
-  }).join("");
-}
-
-function bind() {
-  $("#mobileMenu")?.addEventListener("click", () => $(".sidebar")?.classList.toggle("open"));
-
-  $("#todayBtn")?.addEventListener("click", () => {
-    state.selectedDate = new Date();
-    render();
-  });
-
-  $("#prevDay")?.addEventListener("click", () => {
-    const date = new Date(state.selectedDate);
-    date.setDate(date.getDate() - 1);
-    state.selectedDate = date;
-    render();
-  });
-
-  $("#nextDay")?.addEventListener("click", () => {
-    const date = new Date(state.selectedDate);
-    date.setDate(date.getDate() + 1);
-    state.selectedDate = date;
-    render();
-  });
-
-  $("#globalSearch")?.addEventListener("input", (event) => {
-    state.search = event.target.value.trim().toLowerCase();
-    renderTasks();
-  });
-
-  $$(".filter").forEach((button) => {
-    button.addEventListener("click", () => {
-      $$(".filter").forEach((item) => item.classList.remove("active"));
-      button.classList.add("active");
-      state.filter = button.dataset.filter;
-      renderTasks();
-    });
-  });
-
-  $$('[data-open-task]').forEach((button) => {
-    button.addEventListener("click", () => openTaskModal(null, selectedISO()));
-  });
-
-  $$('[data-add]').forEach((button) => {
-    button.addEventListener("click", () => openItemModal(button.dataset.add));
-  });
-
-  $("#quickNoteBtn")?.addEventListener("click", () => openItemModal("note"));
-  $("#planDayBtn")?.addEventListener("click", buildPlan);
-  $("#taskForm")?.addEventListener("submit", saveTask);
-  $("#deleteTaskBtn")?.addEventListener("click", deleteCurrentTask);
-  $("#itemForm")?.addEventListener("submit", saveUniversalItem);
-  $("#deleteItemBtn")?.addEventListener("click", deleteUniversalItem);
-
-  window.addEventListener("calendar:add-task", (event) => {
-    const date = event.detail?.date || selectedISO();
-    openTaskModal(null, date);
-  });
-
-  window.addEventListener("calendar:edit-task", (event) => {
-    const task = (store.data.tasks || []).find((item) => item.id === event.detail?.id);
-    if (task) openTaskModal(task, task.date);
-  });
-}
-
-async function init() {
-  try {
-    await store.init();
-
-    ["tasks", "events", "goals", "habits", "notes", "shopping"].forEach((collection) => {
-      if (!Array.isArray(store.data[collection])) store.data[collection] = [];
-    });
-
-    initDeleteManager(store);
-    initCalendarPopup(store);
-    bind();
-    resetTaskForm();
-    render();
-  } catch (error) {
-    console.error("Unable to initialize application:", error);
-    toast("The application could not be initialized. Check the console.");
-  }
-}
-
-init();
+async function init(){await store.init();initDeleteManager(store);initCalendarPopup(store);bind();initDrag();render()}
+init().catch(e=>{console.error(e);toast('Unable to initialize the dashboard.')});

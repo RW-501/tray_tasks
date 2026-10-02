@@ -212,12 +212,7 @@ export function requestDelete({
     );
 
 
-  const readableType =
-    type === "tasks"
-      ? "task"
-      : type === "tasks"
-        ? "task"
-        : "item";
+  const readableType = ({ tasks: "task", events: "event", goals: "goal", habits: "habit", notes: "note", shopping: "shopping item", workouts: "workout" })[type] || "item";
 
 
   if (titleElement) {

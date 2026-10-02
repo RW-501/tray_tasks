@@ -1,1 +1,1 @@
-{"name":"rons-todo-calendar-functions","private":true,"type":"module","engines":{"node":"20"},"dependencies":{"express":"^4.21.0","cors":"^2.8.5","openai":"^4.67.3"}}
+{"name":"rons-command-center-v3","private":true,"type":"module","engines":{"node":"20"},"scripts":{"start":"node server/index.js","dev":"node --watch server/index.js"},"dependencies":{"express":"^4.21.0","cors":"^2.8.5","openai":"^4.67.3"}}

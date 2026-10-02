@@ -1,323 +1,39 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A responsive personal todo, calendar, goals, habits, notes and shopping dashboard.">
-  <meta name="theme-color" content="#080b18">
-  <title>Ron's Todo & Calendar</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Ron's AI-powered personal command center for tasks, goals, workouts, notes and calendar planning."><meta name="theme-color" content="#080b18"><title>Ron's Command Center V3</title><link rel="preconnect" href="https://cdn.jsdelivr.net"><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/calendar-popup.css"></head><body>
+<div id="app" class="app-shell"><aside class="sidebar"><a class="brand" href="#"><span class="brand-crown">♛</span><span><strong>RON'S</strong><small>COMMAND CENTER V3</small></span></a><nav class="nav flex-column gap-1 mt-3"><button class="nav-link active"><i class="bi bi-grid-1x2"></i>Dashboard</button><button class="nav-link" data-view="calendar"><i class="bi bi-calendar3"></i>Calendar</button><button class="nav-link" id="advancedSearchBtn"><i class="bi bi-funnel"></i>Search & Filter</button><button class="nav-link" data-open-task><i class="bi bi-list-task"></i>New Task</button><button class="nav-link" data-add="goal"><i class="bi bi-bullseye"></i>New Goal</button><button class="nav-link" id="addWorkoutBtn"><i class="bi bi-activity"></i>Workout</button><button class="nav-link" data-add="note"><i class="bi bi-stars"></i>AI Note</button></nav><div class="quick-add mt-auto"><span class="eyebrow">QUICK CAPTURE</span><button class="btn btn-outline-light" data-open-task>+ Task</button><button id="quickNoteBtn" class="btn btn-outline-light">+ Note / Idea</button><div class="sync-state"><span id="syncDot" class="sync-dot"></span><span id="syncText">Connecting…</span></div></div></aside>
+<main class="main-content"><header class="topbar"><button id="mobileMenu" class="icon-btn d-lg-none"><i class="bi bi-list"></i></button><div><div class="eyebrow">PERSONAL COMMAND CENTER</div><h1 id="pageTitle">Today</h1></div><div class="top-actions ms-auto"><label class="search-box"><i class="bi bi-search"></i><input id="globalSearch" type="search" placeholder="Quick search today's tasks"></label><button id="advancedSearchBtnTop" class="icon-btn" title="Advanced search"><i class="bi bi-sliders"></i></button><button id="todayBtn" class="btn btn-neon">Today</button><button class="icon-btn" data-open-task><i class="bi bi-plus-lg"></i></button></div></header>
+<section id="rolloverAlert" class="rollover-alert d-none"><div class="rollover-heading"><i class="bi bi-exclamation-circle"></i><div><strong>Unfinished work needs attention</strong><small>These one-time tasks were left behind on a previous day.</small></div></div><div id="rolloverList" class="rollover-list"></div></section>
+<section id="weekStrip" class="week-strip"></section>
+<div id="dashboardGrid" class="dashboard-grid">
+<section id="widgetTasks" class="panel task-panel" data-widget><div class="drag-handle" title="Drag to rearrange"><i class="bi bi-grip-horizontal"></i></div><div class="panel-header"><div><span class="eyebrow">FOCUS DAY</span><h2 id="focusDate">Today</h2></div><button class="btn btn-neon ms-auto" data-open-task>+ Task</button></div><div class="filter-row"><button class="filter active" data-filter="all">All <span id="countAll">0</span></button><button class="filter high" data-filter="high">High <span id="countHigh">0</span></button><button class="filter medium" data-filter="medium">Medium <span id="countMedium">0</span></button><button class="filter low" data-filter="low">Low <span id="countLow">0</span></button><button class="filter" data-filter="completed">Done <span id="countDone">0</span></button></div><div id="taskList" class="task-list"></div><div id="emptyTasks" class="empty-state d-none"><i class="bi bi-check2-circle"></i><p>No tasks match this view.</p></div></section>
+<section id="widgetTimeline" class="panel calendar-panel" data-widget><div class="drag-handle"><i class="bi bi-grip-horizontal"></i></div><div class="panel-header"><div><span class="eyebrow">DAY PLAN</span><h2>Timeline</h2></div><div class="calendar-controls ms-auto"><button id="openCalendarBtn" class="btn btn-outline-light btn-sm"><i class="bi bi-calendar3"></i> Full Calendar</button><button id="prevDay" class="icon-btn"><i class="bi bi-chevron-left"></i></button><button id="nextDay" class="icon-btn"><i class="bi bi-chevron-right"></i></button></div></div><div id="timeline" class="timeline"></div></section>
+<section id="widgetProgress" class="panel compact-panel" data-widget><div class="drag-handle"><i class="bi bi-grip-horizontal"></i></div><span class="eyebrow">WEEKLY PROGRESS</span><h2 id="progressPercent">0%</h2><div class="progress"><div id="progressBar" class="progress-bar"></div></div><div class="stat-grid"><div><strong id="doneStat">0</strong><span>Done</span></div><div><strong id="openStat">0</strong><span>Open</span></div><div><strong id="highStat">0</strong><span>High</span></div></div></section>
+<section id="widgetGoals" class="panel compact-panel" data-widget><div class="drag-handle"><i class="bi bi-grip-horizontal"></i></div><div class="panel-header"><div><span class="eyebrow">GOALS + DEADLINES</span><h2>Goals</h2></div><button class="mini-add ms-auto" data-add="goal">+</button></div><div id="goalList" class="simple-list"></div></section>
+<section id="widgetProjects" class="panel compact-panel" data-widget><div class="drag-handle"><i class="bi bi-grip-horizontal"></i></div><div class="panel-header"><div><span class="eyebrow">PROJECTS</span><h2>Active Projects</h2></div><button class="mini-add ms-auto" data-add="project">+</button></div><div id="projectList" class="simple-list"></div></section>
+<section id="widgetHabits" class="panel compact-panel" data-widget><div class="drag-handle"><i class="bi bi-grip-horizontal"></i></div><div class="panel-header"><div><span class="eyebrow">HABITS</span><h2>Consistency</h2></div><button class="mini-add ms-auto" data-add="habit">+</button></div><div id="habitList" class="simple-list"></div></section>
+<section id="widgetWorkouts" class="panel compact-panel" data-widget><div class="drag-handle"><i class="bi bi-grip-horizontal"></i></div><div class="panel-header"><div><span class="eyebrow">WORKOUTS</span><h2>Routines</h2></div><button class="mini-add ms-auto" id="addWorkoutBtn2">+</button></div><div id="workoutList" class="simple-list"></div></section>
+<section id="widgetNotes" class="panel notes-panel" data-widget><div class="drag-handle"><i class="bi bi-grip-horizontal"></i></div><div class="panel-header"><div><span class="eyebrow">AI NOTES / IDEAS</span><h2>Capture → Action</h2></div><button class="mini-add ms-auto" data-add="note">+</button></div><div id="notesList" class="notes-list"></div></section>
+<section id="widgetShopping" class="panel shopping-panel" data-widget><div class="drag-handle"><i class="bi bi-grip-horizontal"></i></div><div class="panel-header"><div><span class="eyebrow">SHOPPING</span><h2>Need to buy</h2></div><button class="mini-add ms-auto" data-add="shopping">+</button></div><div id="shoppingList" class="simple-list"></div></section>
+<section id="widgetAI" class="panel ai-panel" data-widget><div class="drag-handle"><i class="bi bi-grip-horizontal"></i></div><span class="eyebrow">CHATGPT REASONING</span><h2>Plan my day</h2><p class="muted">Build a focused schedule from today's open tasks.</p><button id="planDayBtn" class="btn btn-neon w-100"><i class="bi bi-stars"></i> Build my plan</button><div id="aiResult" class="ai-result mt-3"></div></section>
+</div></main></div>
 
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/calendar-popup.css">
+<!-- TASK MODAL -->
+<div class="modal fade" id="taskModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content dark-modal"><form id="taskForm"><div class="modal-header"><div><span class="eyebrow">TASK / SERIES</span><h2 id="taskModalLabel" class="modal-title fs-5">Add Task</h2></div><button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal"></button></div><div class="modal-body"><input id="taskId" type="hidden"><div class="mb-3"><label class="form-label">Task title</label><input id="taskTitle" class="form-control" required maxlength="140"></div><div class="row g-3"><div class="col-md-4"><label class="form-label">Start date</label><input id="taskDate" type="date" class="form-control" required></div><div class="col-md-4"><label class="form-label">Time</label><input id="taskTime" type="time" class="form-control"></div><div class="col-md-4"><label class="form-label">Minutes</label><input id="taskDuration" type="number" min="5" step="5" value="30" class="form-control"></div></div><div class="row g-3 mt-0"><div class="col-md-4"><label class="form-label">Priority</label><select id="taskPriority" class="form-select"><option>High</option><option selected>Medium</option><option>Low</option></select></div><div class="col-md-4"><label class="form-label">Category</label><select id="taskCategory" class="form-select"><option>Personal</option><option>Work</option><option>Home</option><option>Finance</option><option>Health</option><option>Travel</option><option>Creative</option><option>Shopping</option><option>Project</option><option>Other</option></select></div><div class="col-md-4"><label class="form-label">Linked goal</label><select id="taskGoal" class="form-select"></select></div></div><hr><div class="row g-3"><div class="col-md-4"><label class="form-label">Frequency</label><select id="taskFrequency" class="form-select"><option>Once</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Yearly</option></select></div><div id="frequencyOptions" class="col-md-8 d-none"><div class="row g-3"><div class="col-4"><label class="form-label">Every</label><input id="taskFrequencyInterval" type="number" min="1" value="1" class="form-control"></div><div class="col-8"><label class="form-label">Series ends</label><input id="taskFrequencyEnd" type="date" class="form-control"></div></div></div></div><div id="weeklyDays" class="weekday-picker d-none mt-3"><label><input type="checkbox" name="frequencyDay" value="0">Sun</label><label><input type="checkbox" name="frequencyDay" value="1">Mon</label><label><input type="checkbox" name="frequencyDay" value="2">Tue</label><label><input type="checkbox" name="frequencyDay" value="3">Wed</label><label><input type="checkbox" name="frequencyDay" value="4">Thu</label><label><input type="checkbox" name="frequencyDay" value="5">Fri</label><label><input type="checkbox" name="frequencyDay" value="6">Sat</label></div><div class="mt-3"><label class="form-label">Notes</label><textarea id="taskNotes" class="form-control" rows="3"></textarea></div><div class="mt-3"><label class="form-label">Attachment <small class="muted">Firebase Storage</small></label><input id="taskAttachment" type="file" class="form-control"></div><div id="taskError" class="text-danger mt-2"></div></div><div class="modal-footer justify-content-between"><button id="deleteTaskBtn" type="button" class="btn btn-outline-danger d-none">Delete</button><div><button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button> <button class="btn btn-neon" type="submit">Save Task</button></div></div></form></div></div></div>
 
-  <style>
-    .universal-item { display:flex; align-items:center; gap:.65rem; }
-    .universal-item-main { flex:1; min-width:0; border:0; background:transparent; color:inherit; text-align:left; padding:.25rem 0; }
-    .universal-item-title, .universal-item-subtitle { display:block; }
-    .universal-item-subtitle { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:.15rem; }
-    .mini-edit { border:0; background:transparent; color:inherit; opacity:.65; }
-    .mini-edit:hover, .mini-edit:focus-visible { opacity:1; }
-    .time-block.timeline-task { width:100%; border:0; background:transparent; color:inherit; text-align:left; }
-    .calendar-day-item { width:100%; text-align:left; border:0; }
-    .calendar-item-dot { display:inline-block; width:.45rem; height:.45rem; border-radius:50%; margin-right:.35rem; background:currentColor; }
-    .compact-empty { padding:.75rem 0; }
-  </style>
-</head>
+<!-- CALENDAR -->
+<div class="modal fade" id="calendarModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content dark-modal calendar-modal-content"><div class="modal-header calendar-modal-header"><div><span class="eyebrow">CALENDAR</span><h2>My Calendar</h2></div><div class="calendar-modal-actions ms-auto"><button id="calendarTodayBtn" class="btn btn-outline-light btn-sm">Today</button><button id="addCalendarEventBtn" class="btn btn-neon btn-sm">+ Event</button><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div></div><div class="modal-body"><div class="calendar-popup-layout"><section class="calendar-month-section"><div class="calendar-month-toolbar"><button id="calendarPrevMonth" class="icon-btn"><i class="bi bi-chevron-left"></i></button><div class="calendar-month-title"><span class="eyebrow">MONTH</span><h3 id="calendarMonthTitle"></h3></div><button id="calendarNextMonth" class="icon-btn"><i class="bi bi-chevron-right"></i></button></div><div class="calendar-weekdays"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div><div id="calendarGrid" class="calendar-month-grid"></div></section><aside class="calendar-day-sidebar"><span class="eyebrow">SELECTED DAY</span><h3 id="calendarSelectedDate"></h3><p id="calendarSelectedSummary" class="muted"></p><div class="calendar-day-progress"><div class="d-flex justify-content-between"><span>Task progress</span><strong id="calendarDayPercent">0%</strong></div><div class="progress mt-2"><div id="calendarDayProgressBar" class="progress-bar"></div></div></div><div id="calendarDayItems" class="calendar-day-items"></div><div class="d-grid gap-2 mt-3"><button id="calendarAddTaskForDay" class="btn btn-outline-light">+ Task</button><button id="calendarAddEventForDay" class="btn btn-neon">+ Event</button></div></aside></div></div></div></div></div>
 
-<body>
-  <div id="app" class="app-shell">
-    <aside class="sidebar" aria-label="Primary navigation">
-      <a class="brand" href="#" aria-label="Dashboard home">
-        <span class="brand-crown">♛</span>
-        <span><strong>RON'S</strong><small>TODO & CALENDAR</small></span>
-      </a>
+<!-- EVENT MODAL -->
+<div class="modal fade" id="eventModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content dark-modal"><form id="eventForm"><div class="modal-header"><div><span class="eyebrow">EVENT</span><h2 id="eventModalLabel" class="modal-title fs-5">Add Event</h2></div><button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal"></button></div><div class="modal-body"><input id="eventId" type="hidden"><label class="form-label">Title</label><input id="eventTitle" class="form-control" required><label class="form-label mt-3">Date</label><input id="eventDate" type="date" class="form-control" required><div class="form-check form-switch mt-3"><input id="eventAllDay" class="form-check-input" type="checkbox"><label class="form-check-label">All day</label></div><div id="eventTimeFields" class="row g-3 mt-0"><div class="col-6"><label class="form-label">Start</label><input id="eventStart" type="time" class="form-control"></div><div class="col-6"><label class="form-label">End</label><input id="eventEnd" type="time" class="form-control"></div></div><label class="form-label mt-3">Category</label><select id="eventCategory" class="form-select"><option>Personal</option><option>Work</option><option>Home</option><option>Health</option><option>Travel</option><option>Project</option><option>Other</option></select><label class="form-label mt-3">Notes</label><textarea id="eventNotes" class="form-control"></textarea><div id="eventError" class="text-danger mt-2"></div></div><div class="modal-footer justify-content-between"><button id="deleteEventBtn" type="button" class="btn btn-outline-danger d-none">Delete</button><button class="btn btn-neon" type="submit" id="saveEventBtn">Save Event</button></div></form></div></div></div>
 
-      <nav class="nav flex-column gap-1 mt-3">
-        <button class="nav-link active" data-view="dashboard" type="button"><i class="bi bi-house-door"></i>Dashboard</button>
-        <button class="nav-link" data-view="calendar" type="button"><i class="bi bi-calendar3"></i>Calendar</button>
-        <button class="nav-link" data-view="today" type="button"><i class="bi bi-check-circle"></i>Today</button>
-        <button class="nav-link" data-view="week" type="button"><i class="bi bi-calendar-week"></i>This Week</button>
-        <button class="nav-link" data-view="tasks" type="button"><i class="bi bi-list-task"></i>All Tasks</button>
-        <button class="nav-link" data-view="goals" type="button"><i class="bi bi-rocket-takeoff"></i>Goals</button>
-        <button class="nav-link" data-view="notes" type="button"><i class="bi bi-journal-text"></i>Notes</button>
-        <button class="nav-link" data-view="shopping" type="button"><i class="bi bi-cart3"></i>Shopping</button>
-        <button class="nav-link" data-view="habits" type="button"><i class="bi bi-heart"></i>Habits</button>
-        <button class="nav-link" data-view="assistant" type="button"><i class="bi bi-stars"></i>AI Assistant</button>
-      </nav>
+<!-- UNIVERSAL ITEM MODAL -->
+<div class="modal fade" id="itemModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content dark-modal"><form id="itemForm"><div class="modal-header"><div><span class="eyebrow">CAPTURE</span><h2 id="itemModalLabel" class="modal-title fs-5">Add Item</h2></div><button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal"></button></div><div class="modal-body"><input id="itemType" type="hidden"><input id="itemId" type="hidden"><label class="form-label">Title</label><input id="itemTitle" class="form-control" required><label class="form-label mt-3">Details / idea</label><textarea id="itemDetails" class="form-control" rows="5"></textarea><div id="itemDateGroup" class="mt-3 d-none"><label class="form-label">Goal deadline</label><input id="itemDate" type="date" class="form-control"></div><div id="itemProgressGroup" class="mt-3 d-none"><label class="form-label">Manual progress % <small class="muted">Used when no tasks are linked</small></label><input id="itemManualProgress" type="number" min="0" max="100" class="form-control" value="0"></div><div id="itemFrequencyGroup" class="mt-3 d-none"><label class="form-label">Habit frequency</label><select id="itemFrequency" class="form-select"><option>Daily</option><option>Weekdays</option><option>Weekly</option><option>Monthly</option></select></div><div id="itemQuantityGroup" class="mt-3 d-none"><label class="form-label">Quantity</label><input id="itemQuantity" type="number" min="1" class="form-control" value="1"></div><div class="mt-3"><label class="form-label">Attachment</label><input id="itemAttachment" type="file" class="form-control"></div><div id="aiNoteGroup" class="ai-note-box d-none mt-3"><div><strong>Turn this note into action</strong><p class="muted mb-2">ChatGPT can identify tasks, projects, or goals hidden inside your note.</p></div><button id="analyzeNoteBtn" type="button" class="btn btn-outline-light"><i class="bi bi-stars"></i> Analyze note</button><div id="aiSuggestions" class="mt-3"></div></div><div id="itemError" class="text-danger mt-2"></div></div><div class="modal-footer justify-content-between"><button id="deleteItemBtn" type="button" class="btn btn-outline-danger d-none">Delete</button><button class="btn btn-neon" type="submit">Save</button></div></form></div></div></div>
 
-      <div class="quick-add mt-auto">
-        <span class="eyebrow">QUICK ADD</span>
-        <button class="btn btn-outline-light w-100" data-open-task type="button"><i class="bi bi-plus-lg"></i> Add task</button>
-        <button id="quickNoteBtn" class="btn btn-outline-light w-100" type="button"><i class="bi bi-sticky"></i> Add note</button>
-        <div class="sync-state"><span id="syncDot" class="sync-dot"></span><span id="syncText">Local demo mode</span></div>
-      </div>
-    </aside>
+<!-- WORKOUT MODAL -->
+<div class="modal fade" id="workoutModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content dark-modal"><form id="workoutForm"><div class="modal-header"><div><span class="eyebrow">FITNESS</span><h2 class="modal-title fs-5">Workout Routine</h2></div><button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal"></button></div><div class="modal-body"><input id="workoutId" type="hidden"><label class="form-label">Routine name</label><input id="workoutTitle" class="form-control" placeholder="Chest + Triceps" required><label class="form-label mt-3">Schedule</label><input id="workoutSchedule" class="form-control" placeholder="Mon / Thu or 3x weekly"><label class="form-label mt-3">Exercises <small class="muted">one per line: Exercise | sets | reps</small></label><textarea id="workoutExercises" class="form-control" rows="7" placeholder="Bench Press | 4 | 8-10&#10;Incline Dumbbell Press | 3 | 10-12"></textarea><label class="form-label mt-3">Notes</label><textarea id="workoutNotes" class="form-control"></textarea></div><div class="modal-footer justify-content-between"><button id="deleteWorkoutBtn" type="button" class="btn btn-outline-danger d-none">Delete</button><button class="btn btn-neon" type="submit">Save Routine</button></div></form></div></div></div>
 
-    <main class="main-content">
-      <header class="topbar">
-        <button id="mobileMenu" class="icon-btn d-lg-none" type="button" aria-label="Open navigation"><i class="bi bi-list"></i></button>
-        <div><div class="eyebrow">PERSONAL COMMAND CENTER</div><h1 id="pageTitle">Today</h1></div>
-        <div class="top-actions ms-auto">
-          <label class="search-box"><i class="bi bi-search"></i><input id="globalSearch" type="search" placeholder="Search tasks..." aria-label="Search tasks"></label>
-          <button id="todayBtn" class="btn btn-neon" type="button">Today</button>
-          <button class="icon-btn" data-open-task type="button" aria-label="Add task"><i class="bi bi-plus-lg"></i></button>
-        </div>
-      </header>
+<!-- ADVANCED SEARCH -->
+<div class="modal fade" id="searchModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content dark-modal"><div class="modal-header"><div><span class="eyebrow">COMMAND SEARCH</span><h2 class="modal-title">Search & Filter Tasks</h2></div><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="search-filter-grid"><input id="searchText" data-search-filter class="form-control" placeholder="Search title or notes"><select id="searchCategory" data-search-filter class="form-select"><option value="">All categories</option><option>Personal</option><option>Work</option><option>Home</option><option>Finance</option><option>Health</option><option>Travel</option><option>Creative</option><option>Shopping</option><option>Project</option></select><select id="searchPriority" data-search-filter class="form-select"><option value="">All priorities</option><option>High</option><option>Medium</option><option>Low</option></select><select id="searchStatus" data-search-filter class="form-select"><option value="">Any status</option><option value="open">Open</option><option value="done">Done</option></select><select id="searchGoal" data-search-filter class="form-select"></select><select id="searchFrequency" data-search-filter class="form-select"><option value="">Any frequency</option><option>Once</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Yearly</option></select></div><div id="searchResults" class="search-results mt-3"></div></div></div></div></div>
 
-      <section id="weekStrip" class="week-strip" aria-label="Week overview"></section>
-
-      <div class="dashboard-grid">
-        <section class="panel task-panel">
-          <div class="panel-header flex-wrap gap-2">
-            <div><span class="eyebrow">FOCUS DAY</span><h2 id="focusDate">Today</h2></div>
-            <button class="btn btn-neon ms-auto" data-open-task type="button"><i class="bi bi-plus-lg"></i> Add Task</button>
-          </div>
-
-          <div id="taskFilters" class="filter-row" role="group" aria-label="Task filters">
-            <button class="filter active" data-filter="all" type="button">All <span id="countAll">0</span></button>
-            <button class="filter high" data-filter="high" type="button">High <span id="countHigh">0</span></button>
-            <button class="filter medium" data-filter="medium" type="button">Medium <span id="countMedium">0</span></button>
-            <button class="filter low" data-filter="low" type="button">Low <span id="countLow">0</span></button>
-            <button class="filter" data-filter="completed" type="button">Done <span id="countDone">0</span></button>
-          </div>
-
-          <div id="taskList" class="task-list" aria-live="polite"></div>
-          <div id="emptyTasks" class="empty-state d-none"><i class="bi bi-check2-circle"></i><p>No tasks match this view.</p></div>
-        </section>
-
-        <section class="panel calendar-panel">
-          <div class="panel-header">
-            <div><span class="eyebrow">DAY PLAN</span><h2>Timeline</h2></div>
-            <div class="calendar-controls ms-auto">
-              <button id="openCalendarBtn" class="btn btn-outline-light btn-sm" type="button"><i class="bi bi-calendar3"></i> Full Calendar</button>
-              <button id="prevDay" class="icon-btn" type="button" aria-label="Previous day"><i class="bi bi-chevron-left"></i></button>
-              <button id="nextDay" class="icon-btn" type="button" aria-label="Next day"><i class="bi bi-chevron-right"></i></button>
-            </div>
-          </div>
-          <div id="timeline" class="timeline" aria-live="polite"></div>
-        </section>
-
-        <aside class="right-rail">
-          <section class="panel compact-panel">
-            <div class="panel-header"><div><span class="eyebrow">WEEKLY PROGRESS</span><h2 id="progressPercent">0%</h2></div></div>
-            <div class="progress"><div id="progressBar" class="progress-bar" role="progressbar" style="width:0%"></div></div>
-            <div class="stat-grid"><div><strong id="doneStat">0</strong><span>Done</span></div><div><strong id="openStat">0</strong><span>Open</span></div><div><strong id="highStat">0</strong><span>High</span></div></div>
-          </section>
-
-          <section class="panel compact-panel">
-            <div class="panel-header"><div><span class="eyebrow">THIS WEEK'S GOALS</span><h2>Goals</h2></div><button class="mini-add" data-add="goal" type="button" aria-label="Add goal">+</button></div>
-            <div id="goalList" class="simple-list"></div>
-          </section>
-
-          <section class="panel compact-panel">
-            <div class="panel-header"><div><span class="eyebrow">HABITS</span><h2>Today</h2></div><button class="mini-add" data-add="habit" type="button" aria-label="Add habit">+</button></div>
-            <div id="habitList" class="simple-list"></div>
-          </section>
-        </aside>
-
-        <section class="panel notes-panel">
-          <div class="panel-header"><div><span class="eyebrow">NOTES / IDEAS</span><h2>Capture it</h2></div><button class="mini-add" data-add="note" type="button" aria-label="Add note">+</button></div>
-          <div id="notesList" class="notes-list"></div>
-        </section>
-
-        <section class="panel shopping-panel">
-          <div class="panel-header"><div><span class="eyebrow">SHOPPING</span><h2>Need to buy</h2></div><button class="mini-add" data-add="shopping" type="button" aria-label="Add shopping item">+</button></div>
-          <div id="shoppingList" class="simple-list"></div>
-        </section>
-
-        <section class="panel ai-panel">
-          <div class="panel-header"><div><span class="eyebrow">AI ASSISTANT</span><h2>Plan my day</h2></div></div>
-          <p class="muted">Prioritize your open tasks into a focused schedule. This version uses the local smart planner and keeps the server/API path available for AI features later.</p>
-          <button id="planDayBtn" class="btn btn-neon w-100" type="button"><i class="bi bi-stars"></i> Build my plan</button>
-          <div id="aiResult" class="ai-result mt-3"></div>
-        </section>
-      </div>
-    </main>
-  </div>
-
-  <!-- TASK MODAL: TASKS ONLY -->
-  <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content dark-modal">
-        <form id="taskForm" novalidate>
-          <div class="modal-header">
-            <div><div class="eyebrow">TASK</div><h2 class="modal-title fs-5" id="taskModalLabel">Add Task</h2></div>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-
-          <div class="modal-body">
-            <input type="hidden" id="taskId">
-            <div class="mb-3"><label class="form-label" for="taskTitle">Task title</label><input class="form-control" id="taskTitle" maxlength="120" autocomplete="off" required></div>
-            <div class="row g-3">
-              <div class="col-12 col-sm-6"><label class="form-label" for="taskDate">Date</label><input type="date" class="form-control" id="taskDate" required></div>
-              <div class="col-12 col-sm-6"><label class="form-label" for="taskTime">Start time</label><input type="time" class="form-control" id="taskTime"></div>
-            </div>
-            <div class="row g-3 mt-0">
-              <div class="col-12 col-sm-6"><label class="form-label" for="taskDuration">Minutes</label><input type="number" min="5" max="720" step="5" value="30" class="form-control" id="taskDuration"></div>
-              <div class="col-12 col-sm-6"><label class="form-label" for="taskPriority">Priority</label><select class="form-select" id="taskPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
-            </div>
-            <div class="mt-3"><label class="form-label" for="taskCategory">Category</label><select class="form-select" id="taskCategory"><option>Personal</option><option>Work</option><option>Home</option><option>Finance</option><option>Health</option><option>Travel</option><option>Creative</option><option>Shopping</option><option>Project</option><option>Other</option></select></div>
-            <div class="mt-3"><label class="form-label" for="taskNotes">Notes</label><textarea class="form-control" id="taskNotes" rows="3" maxlength="500"></textarea></div>
-            <div id="taskError" class="invalid-feedback d-block mt-2" role="alert" aria-live="polite"></div>
-          </div>
-
-          <div class="modal-footer justify-content-between">
-            <button type="button" id="deleteTaskBtn" class="btn btn-outline-danger d-none"><i class="bi bi-trash3"></i> Delete</button>
-            <div class="d-flex gap-2 ms-auto">
-              <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-neon" id="saveTaskBtn"><i class="bi bi-plus-lg"></i> Add Task</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- FULL CALENDAR MODAL -->
-  <div class="modal fade" id="calendarModal" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content dark-modal calendar-modal-content">
-        <div class="modal-header calendar-modal-header">
-          <div><div class="eyebrow">CALENDAR</div><h2 class="modal-title" id="calendarModalLabel">My Calendar</h2></div>
-          <div class="calendar-modal-actions ms-auto">
-            <button id="calendarTodayBtn" class="btn btn-outline-light btn-sm" type="button">Today</button>
-            <button id="addCalendarEventBtn" class="btn btn-neon btn-sm" type="button"><i class="bi bi-plus-lg"></i> Add Event</button>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-        </div>
-
-        <div class="modal-body">
-          <div class="calendar-popup-layout">
-            <section class="calendar-month-section">
-              <div class="calendar-month-toolbar">
-                <button id="calendarPrevMonth" class="icon-btn" type="button" aria-label="Previous month"><i class="bi bi-chevron-left"></i></button>
-                <div class="calendar-month-title"><span class="eyebrow">MONTH</span><h3 id="calendarMonthTitle"></h3></div>
-                <button id="calendarNextMonth" class="icon-btn" type="button" aria-label="Next month"><i class="bi bi-chevron-right"></i></button>
-              </div>
-
-              <div class="calendar-weekdays"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
-              <div id="calendarGrid" class="calendar-month-grid"></div>
-            </section>
-
-            <aside class="calendar-day-sidebar">
-              <div class="selected-day-header"><span class="eyebrow">SELECTED DAY</span><h3 id="calendarSelectedDate"></h3><p id="calendarSelectedSummary" class="muted">Your schedule for this day.</p></div>
-              <div class="calendar-day-progress">
-                <div class="d-flex justify-content-between"><span>Task progress</span><strong id="calendarDayPercent">0%</strong></div>
-                <div class="progress mt-2"><div id="calendarDayProgressBar" class="progress-bar" style="width:0%"></div></div>
-              </div>
-              <div id="calendarDayItems" class="calendar-day-items"></div>
-              <div class="d-grid gap-2 mt-3">
-                <button id="calendarAddTaskForDay" class="btn btn-outline-light" type="button"><i class="bi bi-check2-square"></i> Add Task</button>
-                <button id="calendarAddEventForDay" class="btn btn-neon" type="button"><i class="bi bi-calendar-event"></i> Add Event</button>
-              </div>
-            </aside>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- EVENT MODAL: EVENTS ONLY -->
-  <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content dark-modal">
-        <form id="eventForm" novalidate>
-          <div class="modal-header">
-            <div><div class="eyebrow">CALENDAR EVENT</div><h2 class="modal-title fs-5" id="eventModalLabel">Add Event</h2></div>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-
-          <div class="modal-body">
-            <input type="hidden" id="eventId">
-            <div class="mb-3"><label for="eventTitle" class="form-label">Event title</label><input type="text" id="eventTitle" class="form-control" maxlength="120" autocomplete="off" required></div>
-            <div class="mb-3"><label for="eventDate" class="form-label">Date</label><input type="date" id="eventDate" class="form-control" required></div>
-            <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" role="switch" id="eventAllDay"><label class="form-check-label" for="eventAllDay">All-day event</label></div>
-            <div id="eventTimeFields" class="row g-3">
-              <div class="col-12 col-sm-6"><label for="eventStart" class="form-label">Start time</label><input type="time" id="eventStart" class="form-control"></div>
-              <div class="col-12 col-sm-6"><label for="eventEnd" class="form-label">End time</label><input type="time" id="eventEnd" class="form-control"></div>
-            </div>
-            <div class="mt-3"><label for="eventCategory" class="form-label">Category</label><select id="eventCategory" class="form-select"><option>Personal</option><option>Work</option><option>Home</option><option>Finance</option><option>Health</option><option>Travel</option><option>Project</option><option>Other</option></select></div>
-            <div class="mt-3"><label for="eventNotes" class="form-label">Notes</label><textarea id="eventNotes" class="form-control" rows="3" maxlength="500"></textarea></div>
-            <div id="eventError" class="invalid-feedback d-block mt-2" role="alert" aria-live="polite"></div>
-          </div>
-
-          <div class="modal-footer justify-content-between">
-            <button id="deleteEventBtn" type="button" class="btn btn-outline-danger d-none"><i class="bi bi-trash3"></i> Delete</button>
-            <div class="d-flex gap-2 ms-auto">
-              <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" id="saveEventBtn" class="btn btn-neon"><i class="bi bi-plus-lg"></i> Add Event</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- UNIVERSAL MODAL: NOTE / HABIT / GOAL / SHOPPING -->
-  <div class="modal fade" id="itemModal" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content dark-modal">
-        <form id="itemForm" novalidate>
-          <div class="modal-header">
-            <div><div class="eyebrow" id="itemModalEyebrow">ITEM</div><h2 class="modal-title fs-5" id="itemModalLabel">Add Item</h2></div>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-
-          <div class="modal-body">
-            <input type="hidden" id="itemType">
-            <input type="hidden" id="itemId">
-
-            <div class="mb-3"><label for="itemTitle" id="itemTitleLabel" class="form-label">Title</label><input type="text" id="itemTitle" class="form-control" maxlength="160" autocomplete="off" required></div>
-
-            <div id="itemDateGroup" class="mb-3 d-none"><label for="itemDate" class="form-label">Target date</label><input type="date" id="itemDate" class="form-control"></div>
-
-            <div id="itemFrequencyGroup" class="mb-3 d-none"><label for="itemFrequency" class="form-label">Frequency</label><select id="itemFrequency" class="form-select"><option>Daily</option><option>Weekdays</option><option>Weekly</option><option>Monthly</option></select></div>
-
-            <div id="itemQuantityGroup" class="mb-3 d-none"><label for="itemQuantity" class="form-label">Quantity</label><input type="number" id="itemQuantity" class="form-control" min="1" step="1" value="1"></div>
-
-            <div id="itemDetailsGroup" class="mb-3"><label for="itemDetails" id="itemDetailsLabel" class="form-label">Details</label><textarea id="itemDetails" class="form-control" rows="4" maxlength="1000"></textarea></div>
-
-            <div id="itemError" class="invalid-feedback d-block" role="alert" aria-live="polite"></div>
-          </div>
-
-          <div class="modal-footer justify-content-between">
-            <button id="deleteItemBtn" type="button" class="btn btn-outline-danger d-none"><i class="bi bi-trash3"></i> Delete</button>
-            <div class="d-flex gap-2 ms-auto">
-              <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
-              <button id="saveItemBtn" type="submit" class="btn btn-neon"><i class="bi bi-check2"></i> Save</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- SHARED DELETE CONFIRMATION MODAL -->
-  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content dark-modal">
-        <div class="modal-header">
-          <div><div class="eyebrow">CONFIRM DELETE</div><h2 id="deleteConfirmTitle" class="modal-title fs-5">Delete item?</h2></div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <strong id="deleteItemName">This item</strong>
-          <p class="muted mb-0 mt-2">Are you sure you want to delete this? This action cannot be undone.</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Keep It</button>
-          <button id="confirmDeleteBtn" type="button" class="btn btn-danger"><i class="bi bi-trash3"></i> Delete</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="toast" class="app-toast" role="status" aria-live="polite"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script type="module" src="js/app.js"></script>
-</body>
-</html>
+<!-- DELETE CONFIRM -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content dark-modal"><div class="modal-header"><h2 id="deleteConfirmTitle" class="modal-title fs-5">Delete item?</h2><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><strong id="deleteItemName">This item</strong><p class="muted">This cannot be undone.</p></div><div class="modal-footer"><button class="btn btn-outline-light" data-bs-dismiss="modal">Keep it</button><button id="confirmDeleteBtn" class="btn btn-danger">Delete</button></div></div></div></div>
+<div id="toast" class="app-toast" role="status"></div><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><script type="module" src="js/app.js"></script></body></html>

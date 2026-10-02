@@ -1,4 +1,5 @@
 import { requestDelete } from "./delete-manager.js";
+import { taskOccurrencesForDate } from "./recurrence.js";
 
 let storeReference = null;
 let visibleDate = new Date();
@@ -51,21 +52,14 @@ function escapeHTML(value = "") {
 
 function getItemsForDate(date) {
   const dateISO = toISO(date);
-
-  const tasks = (storeReference?.data.tasks || [])
-    .filter((task) => task.date === dateISO)
+  const tasks = taskOccurrencesForDate(storeReference?.data.tasks || [], dateISO)
     .map((task) => ({ ...task, itemType: "task" }));
-
   const events = (storeReference?.data.events || [])
     .filter((event) => event.date === dateISO)
     .map((event) => ({ ...event, itemType: "event" }));
-
-  return [...tasks, ...events].sort((a, b) => {
-    const timeA = a.startTime || "23:59";
-    const timeB = b.startTime || "23:59";
-    if (a.allDay && !b.allDay) return -1;
-    if (!a.allDay && b.allDay) return 1;
-    return timeA.localeCompare(timeB);
+  return [...tasks, ...events].sort((a,b) => {
+    const timeA=a.startTime||"23:59", timeB=b.startTime||"23:59";
+    if(a.allDay&&!b.allDay)return -1; if(!a.allDay&&b.allDay)return 1; return timeA.localeCompare(timeB);
   });
 }
 
