@@ -1,5 +1,8 @@
 import {store} from './store.js';
 import { initCalendarPopup } from "./calendar-popup.js";
+import {
+  initDeleteManager
+} from "./delete-manager.js";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const state={selectedDate:new Date(),filter:'all',search:''}; const pad=n=>String(n).padStart(2,'0'); const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; const dateFromISO=s=>new Date(`${s}T12:00:00`); const uid=()=>crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`;
 function esc(v=''){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -23,4 +26,139 @@ async function addSimple(type){const labels={goal:'goal',habit:'habit',note:'not
 function buildPlan(){const rank={High:0,Medium:1,Low:2};const tasks=tasksForDate().filter(t=>!t.completed).sort((a,b)=>rank[a.priority]-rank[b.priority]||(a.startTime||'99:99').localeCompare(b.startTime||'99:99'));if(!tasks.length){$('#aiResult').innerHTML='<div class="ai-step">Everything for this day is complete.</div>';return}let cursor=8*60+30;$('#aiResult').innerHTML=tasks.slice(0,8).map(t=>{if(t.startTime){const[h,m]=t.startTime.split(':').map(Number);cursor=Math.max(cursor,h*60+m)}const start=cursor,end=cursor+(+t.estimatedMinutes||30);cursor=end+10;return `<div class="ai-step"><strong>${mins(start)}</strong> — ${esc(t.title)} <span class="muted">(${t.priority})</span></div>`}).join('')}
 function mins(n){const h=Math.floor(n/60)%24,m=n%60;return `${h%12||12}:${pad(m)} ${h>=12?'PM':'AM'}`}
 function bind(){$('#mobileMenu').onclick=()=>$('.sidebar').classList.toggle('open');$('#todayBtn').onclick=()=>{state.selectedDate=new Date();render()};$('#prevDay').onclick=()=>{state.selectedDate.setDate(state.selectedDate.getDate()-1);render()};$('#nextDay').onclick=()=>{state.selectedDate.setDate(state.selectedDate.getDate()+1);render()};$('#globalSearch').oninput=e=>{state.search=e.target.value.trim().toLowerCase();renderTasks()};$$('.filter').forEach(b=>b.onclick=()=>{$$('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.filter=b.dataset.filter;renderTasks()});$$('[data-add]').forEach(b=>b.onclick=()=>addSimple(b.dataset.add));$('#quickNoteBtn').onclick=()=>addSimple('note');$('#planDayBtn').onclick=buildPlan;$('#taskModal').addEventListener('show.bs.modal',e=>{if(!e.relatedTarget?.classList.contains('task-menu')&&!$('#taskId').value)resetTaskForm()});$('#taskModal').addEventListener('hidden.bs.modal',resetTaskForm);$('#taskForm').onsubmit=async e=>{e.preventDefault();const title=$('#taskTitle').value.trim();if(!title){$('#taskError').textContent='Enter a task title.';return}const id=$('#taskId').value||uid();const existing=store.data.tasks.find(t=>t.id===id);const item={id,title,date:$('#taskDate').value,startTime:$('#taskTime').value,estimatedMinutes:+$('#taskDuration').value||30,priority:$('#taskPriority').value,category:$('#taskCategory').value,notes:$('#taskNotes').value.trim(),completed:existing?.completed||false,createdAt:existing?.createdAt||Date.now(),updatedAt:Date.now()};await store.upsert('tasks',item);bootstrap.Modal.getInstance($('#taskModal')).hide();if(item.date===selectedISO())render();else render();toast(existing?'Task updated':'Task added')}}
-await store.init();initCalendarPopup(store);bind();resetTaskForm();render();
+await store.init();initCalendarPopup(store);initDeleteManager(store);bind();resetTaskForm();render();
+function openTaskEditor(task) {
+
+  document.getElementById(
+    "taskId"
+  ).value =
+    task.id;
+
+
+  document.getElementById(
+    "taskTitle"
+  ).value =
+    task.title || "";
+
+
+  document.getElementById(
+    "taskDate"
+  ).value =
+    task.date || "";
+
+
+  document.getElementById(
+    "taskTime"
+  ).value =
+    task.time || "";
+
+
+  document.getElementById(
+    "taskPriority"
+  ).value =
+    task.priority || "Medium";
+
+
+  document.getElementById(
+    "taskCategory"
+  ).value =
+    task.category || "Personal";
+
+
+  /*
+   Change this ID if your textarea
+   currently uses another ID.
+  */
+
+  const description =
+    document.getElementById(
+      "taskDescription"
+    );
+
+  if (description) {
+
+    description.value =
+      task.description || "";
+
+  }
+
+
+  document.getElementById(
+    "taskModalLabel"
+  ).textContent =
+    "Edit Task";
+
+
+  document.getElementById(
+    "saveTaskBtn"
+  ).innerHTML = `
+
+    <i class="bi bi-check2"></i>
+    Update Task
+
+  `;
+
+
+  document.getElementById(
+    "deleteTaskBtn"
+  ).classList.remove(
+    "d-none"
+  );
+
+
+  bootstrap.Modal
+    .getOrCreateInstance(
+      document.getElementById(
+        "taskModal"
+      )
+    )
+    .show();
+
+}
+
+function openNewTaskModal() {
+
+  document
+    .getElementById(
+      "taskForm"
+    )
+    .reset();
+
+
+  document.getElementById(
+    "taskId"
+  ).value = "";
+
+
+  document.getElementById(
+    "taskModalLabel"
+  ).textContent =
+    "Add Task";
+
+
+  document.getElementById(
+    "saveTaskBtn"
+  ).innerHTML = `
+
+    <i class="bi bi-plus-lg"></i>
+    Add Task
+
+  `;
+
+
+  document.getElementById(
+    "deleteTaskBtn"
+  ).classList.add(
+    "d-none"
+  );
+
+
+  bootstrap.Modal
+    .getOrCreateInstance(
+      document.getElementById(
+        "taskModal"
+      )
+    )
+    .show();
+
+}

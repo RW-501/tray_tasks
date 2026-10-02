@@ -1,3 +1,7 @@
+import {
+  requestDelete
+} from "./delete-manager.js";
+
 // =========================================================
 // CALENDAR POPUP
 // =========================================================
@@ -532,16 +536,15 @@ function renderSelectedDay() {
 
         return `
 
-          <div
-            class="
-              calendar-day-item
-              ${
-                item.completed
-                  ? "done"
-                  : ""
-              }
-            "
-          >
+<div
+  class="
+    calendar-day-item
+    ${item.completed ? "done" : ""}
+    ${!isTask ? "calendar-editable-event" : ""}
+  "
+  data-item-id="${item.id}"
+  data-item-type="${item.itemType}"
+>
 
             <div
               class="calendar-day-item-icon"
@@ -618,26 +621,59 @@ function renderSelectedDay() {
       })
       .join("");
 
+      container
+  .querySelectorAll(
+    ".calendar-editable-event"
+  )
+  .forEach(element => {
+
+    element.addEventListener(
+      "click",
+      () => {
+
+        const id =
+          element.dataset.itemId;
+
+
+        const event =
+          storeReference.data.events.find(
+            item =>
+              item.id === id
+          );
+
+
+        if (event) {
+
+          openExistingEvent(event);
+
+        }
+
+      }
+    );
+
+  });
+
 }
 
 
 /* =========================================================
    EVENT FORM
 ========================================================= */
-
 async function saveEvent(event) {
 
   event.preventDefault();
-
 
   const error =
     document.getElementById(
       "eventError"
     );
 
-
   error.textContent = "";
 
+
+  /* =====================================================
+     GET FORM VALUES
+  ===================================================== */
 
   const title =
     document.getElementById(
@@ -669,6 +705,28 @@ async function saveEvent(event) {
     ).checked;
 
 
+  const category =
+    document.getElementById(
+      "eventCategory"
+    ).value;
+
+
+  const notes =
+    document.getElementById(
+      "eventNotes"
+    ).value.trim();
+
+
+  const existingId =
+    document.getElementById(
+      "eventId"
+    ).value;
+
+
+  /* =====================================================
+     VALIDATION
+  ===================================================== */
+
   if (!title || !date) {
 
     error.textContent =
@@ -678,6 +736,11 @@ async function saveEvent(event) {
 
   }
 
+
+  /*
+   * Only validate start/end times
+   * when this is NOT an all-day event.
+   */
 
   if (
     !allDay &&
@@ -694,59 +757,157 @@ async function saveEvent(event) {
   }
 
 
-  const existingId =
-    document.getElementById(
-      "eventId"
-    ).value;
+  /* =====================================================
+     FIND EXISTING EVENT
+  ===================================================== */
+
+  const existingEvent =
+    existingId
+      ? storeReference.data.events.find(
+          item =>
+            item.id === existingId
+        )
+      : null;
+
+
+  /*
+   * If an ID exists but we cannot find
+   * the event locally, stop instead of
+   * accidentally creating a duplicate.
+   */
+
+  if (
+    existingId &&
+    !existingEvent
+  ) {
+
+    console.error(
+      "Unable to find event:",
+      existingId
+    );
+
+    error.textContent =
+      "Unable to find this event. Refresh the page and try again.";
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     BUILD EVENT
+  ===================================================== */
+
+  const now =
+    new Date().toISOString();
 
 
   const item = {
+
+    /*
+     * Preserve existing fields.
+     *
+     * This becomes important later when
+     * we add reminders and recurrence.
+     */
+
+    ...existingEvent,
+
 
     id:
       existingId ||
       crypto.randomUUID(),
 
+
     title,
 
     date,
 
-    startTime,
 
-    endTime,
+    /*
+     * All-day events should not retain
+     * old start/end times.
+     */
+
+    startTime:
+      allDay
+        ? ""
+        : startTime,
+
+
+    endTime:
+      allDay
+        ? ""
+        : endTime,
+
 
     allDay,
 
-    category:
-      document.getElementById(
-        "eventCategory"
-      ).value,
+    category,
 
-    notes:
-      document.getElementById(
-        "eventNotes"
-      ).value.trim(),
+    notes,
+
+
+    createdAt:
+      existingEvent?.createdAt ||
+      now,
+
 
     updatedAt:
-      new Date().toISOString()
+      now
 
   };
 
 
-  if (!existingId) {
-
-    item.createdAt =
-      new Date().toISOString();
-
-  }
-
+  /* =====================================================
+     SAVE TO FIRESTORE
+  ===================================================== */
 
   try {
+
+    /*
+     * Disable save button while Firestore
+     * is processing to prevent duplicate
+     * submissions.
+     */
+
+    const saveButton =
+      document.getElementById(
+        "saveEventBtn"
+      );
+
+
+    const originalButtonHTML =
+      saveButton?.innerHTML;
+
+
+    if (saveButton) {
+
+      saveButton.disabled = true;
+
+      saveButton.innerHTML = `
+
+        <span
+          class="spinner-border spinner-border-sm me-1"
+          aria-hidden="true"
+        ></span>
+
+        Saving...
+
+      `;
+
+    }
+
 
     await storeReference.upsert(
       "events",
       item
     );
 
+
+    /* ===================================================
+       UPDATE SELECTED CALENDAR DATE
+    =================================================== */
 
     selectedDate =
       parseLocalDate(date);
@@ -760,27 +921,87 @@ async function saveEvent(event) {
       );
 
 
+    /* ===================================================
+       CLOSE EVENT MODAL
+    =================================================== */
+
     eventModal.hide();
 
 
+    /* ===================================================
+       REFRESH CALENDAR
+    =================================================== */
+
     renderCalendar();
+
+
+    console.info(
+      existingEvent
+        ? `Event updated: ${item.id}`
+        : `Event created: ${item.id}`
+    );
+
+
+    /* ===================================================
+       RESTORE BUTTON
+    =================================================== */
+
+    if (saveButton) {
+
+      saveButton.disabled = false;
+
+      saveButton.innerHTML =
+        originalButtonHTML;
+
+    }
 
 
   } catch (saveError) {
 
     console.error(
+      "Unable to save event:",
       saveError
     );
 
 
     error.textContent =
-      "Unable to save event. Check Firebase permissions.";
+      saveError?.code ===
+      "permission-denied"
+        ? "Firebase denied permission to save this event."
+        : "Unable to save event. Please try again.";
+
+
+    /*
+     * Restore save button if saving failed.
+     */
+
+    const saveButton =
+      document.getElementById(
+        "saveEventBtn"
+      );
+
+
+    if (saveButton) {
+
+      saveButton.disabled = false;
+
+      saveButton.innerHTML = `
+
+        <i class="bi bi-check2"></i>
+
+        ${
+          existingEvent
+            ? "Update Event"
+            : "Save Event"
+        }
+
+      `;
+
+    }
 
   }
 
 }
-
-
 /* =========================================================
    OPEN EVENT MODAL
 ========================================================= */
@@ -806,6 +1027,29 @@ function openEventModal() {
   document.getElementById(
     "eventError"
   ).textContent = "";
+
+
+  document.getElementById(
+    "eventModalLabel"
+  ).textContent =
+    "Add Event";
+
+
+  document.getElementById(
+    "saveEventBtn"
+  ).innerHTML = `
+
+    <i class="bi bi-plus-lg"></i>
+    Add Event
+
+  `;
+
+
+  document.getElementById(
+    "deleteEventBtn"
+  ).classList.add(
+    "d-none"
+  );
 
 
   eventModal.show();
@@ -1014,5 +1258,141 @@ if (openCalendarBtn) {
     "submit",
     saveEvent
   );
+
+
+  document
+  .getElementById(
+    "deleteEventBtn"
+  )
+  .addEventListener(
+    "click",
+    () => {
+
+      const id =
+        document.getElementById(
+          "eventId"
+        ).value;
+
+
+      if (!id) {
+        return;
+      }
+
+
+      const event =
+        storeReference.data.events.find(
+          item =>
+            item.id === id
+        );
+
+
+      if (!event) {
+        return;
+      }
+
+
+      eventModal.hide();
+
+
+      requestDelete({
+
+        type: "events",
+
+        id: event.id,
+
+        title: event.title,
+
+        afterDelete: () => {
+
+          renderCalendar();
+
+        }
+
+      });
+
+    }
+  );
+  
+}
+
+function openExistingEvent(event) {
+
+  document.getElementById(
+    "eventForm"
+  ).reset();
+
+
+  document.getElementById(
+    "eventId"
+  ).value =
+    event.id;
+
+
+  document.getElementById(
+    "eventTitle"
+  ).value =
+    event.title || "";
+
+
+  document.getElementById(
+    "eventDate"
+  ).value =
+    event.date || "";
+
+
+  document.getElementById(
+    "eventStart"
+  ).value =
+    event.startTime || "";
+
+
+  document.getElementById(
+    "eventEnd"
+  ).value =
+    event.endTime || "";
+
+
+  document.getElementById(
+    "eventCategory"
+  ).value =
+    event.category || "Personal";
+
+
+  document.getElementById(
+    "eventNotes"
+  ).value =
+    event.notes || "";
+
+
+  document.getElementById(
+    "eventAllDay"
+  ).checked =
+    Boolean(event.allDay);
+
+
+  document.getElementById(
+    "eventModalLabel"
+  ).textContent =
+    "Edit Event";
+
+
+  document.getElementById(
+    "saveEventBtn"
+  ).innerHTML = `
+
+    <i class="bi bi-check2"></i>
+    Update Event
+
+  `;
+
+
+  document.getElementById(
+    "deleteEventBtn"
+  ).classList.remove(
+    "d-none"
+  );
+
+
+  eventModal.show();
 
 }
