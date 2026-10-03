@@ -538,6 +538,55 @@ before returning it.
         return res.json({plan});
       }
 
+      // -------------------------
+      // Productivity Insights
+      // -------------------------
+      if (req.method === "POST" && req.path === "/productivity-insights") {
+        const activity = Array.isArray(req.body?.activity) ? req.body.activity.slice(-180) : [];
+        const blocks = Array.isArray(req.body?.blocks) ? req.body.blocks.slice(-120) : [];
+        const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks.slice(-120) : [];
+        const rangeDays = Math.min(180, Math.max(7, Number(req.body?.rangeDays) || 30));
+        const client = getOpenAI();
+        const response = await client.responses.create({
+          model: "gpt-5-mini",
+          instructions: `You are the analytics coach inside Tray Tasks. Analyze only the supplied tracked productivity data for the last ${rangeDays} days. Give 4-7 concise, practical observations. Separate observations from suggestions. Identify time-of-day patterns, repeated behaviors, schedule-vs-actual patterns when supported, and possible workload/sleep/work interactions. Do NOT claim causation from correlation. Explicitly say when there is not enough data. Do not diagnose health or make medical claims. Return plain text with short headings.`,
+          input: JSON.stringify({activity, blocks, tasks}),
+        });
+        return res.json({ insight: response.output_text || "Not enough data yet." });
+      }
+
+      // -------------------------
+      // Tray Assistant Chat
+      // -------------------------
+      if (req.method === "POST" && req.path === "/assistant-chat") {
+        const message = String(req.body?.message || "").trim();
+        if (!message) return res.status(400).json({error:"A message is required."});
+        const history = Array.isArray(req.body?.history) ? req.body.history.slice(-12) : [];
+        const context = req.body?.context && typeof req.body.context === "object" ? req.body.context : {};
+        const client = getOpenAI();
+        const response = await client.responses.create({
+          model: "gpt-5-mini",
+          instructions: `You are Tray, the conversational data assistant inside a personal productivity Command Center. Be concise and conversational. Use supplied Command Center context when relevant. Ask ONE useful follow-up question when the user's statement lacks information needed to accurately log work, sleep, school, workouts, tasks, or habits. Never pretend you know an unprovided time/date. If the user clearly wants something recorded, propose an action instead of claiming it was saved. Actions are reviewed by the user before saving.
+
+Return JSON only:
+{"reply":"natural response or follow-up question","actions":[]}
+
+Allowed action objects:
+{"type":"task","label":"Add task","summary":"...","payload":{"title":"","date":"YYYY-MM-DD","startTime":"HH:MM","estimatedMinutes":30,"priority":"Medium","category":"Personal","notes":"","goalId":"","projectId":""}}
+{"type":"dailyBlock","label":"Log activity","summary":"...","payload":{"blockType":"work|sleep|school|workout|other","title":"","date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","durationMinutes":0,"notes":""}}
+{"type":"habit","label":"Add habit","summary":"...","payload":{"title":"","frequency":"Daily","details":""}}
+{"type":"note","label":"Save note","summary":"...","payload":{"title":"","details":""}}
+
+Only include an action when the user's intent is clear enough to create it. If key date/time details are ambiguous for a time block, ask a question and return no action yet. Use the context to answer questions about open tasks and recent patterns, but describe patterns cautiously.`,
+          input: JSON.stringify({message, history, context}),
+        });
+        let result;
+        try { result = JSON.parse(response.output_text); }
+        catch { result = {reply: response.output_text || "I could not format that response.", actions:[]}; }
+        if (!Array.isArray(result.actions)) result.actions=[];
+        return res.json({reply:String(result.reply||""),actions:result.actions.slice(0,5)});
+      }
+
       return res.status(404).json({
         error: "Route not found.",
       });

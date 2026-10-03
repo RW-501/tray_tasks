@@ -3,6 +3,8 @@ import { initCalendarPopup, renderCalendar } from './calendar-popup.js';
 import { initDeleteManager, requestDelete } from './delete-manager.js';
 import { iso, occursOn, isOccurrenceComplete, taskOccurrencesForDate, recurrenceLabel } from './recurrence.js';
 import { partOfDay, minutesBetween, activityStats, suggestionsFor } from './activity-engine.js';
+import { initAnalytics } from './analytics.js';
+import { initVoiceAssistant } from './voice-assistant.js';
 
 const API_BASE_URL = 'https://us-central1-tray-tasks.cloudfunctions.net/api';
 const $ = s => document.querySelector(s);
@@ -29,7 +31,7 @@ const state = {
 };
 
 const SETTINGS_KEY = 'command-center-v4-settings';
-const defaultSettings = { compact:false, sidebarOpen:true, showCompleted:true, slideshow:true, activityBatchSize:3, autoDayPlan:true };
+const defaultSettings = { compact:false, sidebarOpen:true, showCompleted:true, slideshow:true, activityBatchSize:3, autoDayPlan:true, voiceEnabled:false, voiceTalkBack:true, wakePhraseEnabled:true, wakePhrase:'Hey Tray', voiceScheduleEnabled:true, voiceStart:'07:00', voiceEnd:'22:00', voiceRate:1 };
 let settings = {...defaultSettings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')};
 
 function toast(message){ const e=$('#toast'); if(!e) return console.info(message); e.textContent=message; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),2300); }
@@ -60,6 +62,14 @@ function saveSettings(){
     slideshow: $('#settingSlideshow')?.checked ?? settings.slideshow,
     autoDayPlan: $('#settingAutoPlan')?.checked ?? settings.autoDayPlan,
     activityBatchSize: Number($('#settingActivityBatch')?.value||settings.activityBatchSize||3),
+    voiceEnabled: $('#settingVoiceEnabled')?.checked ?? settings.voiceEnabled,
+    voiceTalkBack: $('#settingVoiceTalkBack')?.checked ?? settings.voiceTalkBack,
+    wakePhraseEnabled: $('#settingWakePhrase')?.checked ?? settings.wakePhraseEnabled,
+    wakePhrase: $('#settingWakePhraseText')?.value.trim() || settings.wakePhrase || 'Hey Tray',
+    voiceScheduleEnabled: $('#settingVoiceSchedule')?.checked ?? settings.voiceScheduleEnabled,
+    voiceStart: $('#settingVoiceStart')?.value || settings.voiceStart || '07:00',
+    voiceEnd: $('#settingVoiceEnd')?.value || settings.voiceEnd || '22:00',
+    voiceRate: Number($('#settingVoiceRate')?.value || settings.voiceRate || 1),
   };
   localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));
   applySettings();
@@ -73,7 +83,16 @@ function applySettings(){
   if($('#settingSlideshow')) $('#settingSlideshow').checked=!!settings.slideshow;
   if($('#settingAutoPlan')) $('#settingAutoPlan').checked=!!settings.autoDayPlan;
   if($('#settingActivityBatch')) $('#settingActivityBatch').value=String(settings.activityBatchSize||3);
+  if($('#settingVoiceEnabled')) $('#settingVoiceEnabled').checked=!!settings.voiceEnabled;
+  if($('#settingVoiceTalkBack')) $('#settingVoiceTalkBack').checked=!!settings.voiceTalkBack;
+  if($('#settingWakePhrase')) $('#settingWakePhrase').checked=!!settings.wakePhraseEnabled;
+  if($('#settingWakePhraseText')) $('#settingWakePhraseText').value=settings.wakePhrase||'Hey Tray';
+  if($('#settingVoiceSchedule')) $('#settingVoiceSchedule').checked=!!settings.voiceScheduleEnabled;
+  if($('#settingVoiceStart')) $('#settingVoiceStart').value=settings.voiceStart||'07:00';
+  if($('#settingVoiceEnd')) $('#settingVoiceEnd').value=settings.voiceEnd||'22:00';
+  if($('#settingVoiceRate')) $('#settingVoiceRate').value=String(settings.voiceRate||1);
   startSlideshow();
+  window.dispatchEvent(new CustomEvent('command-center:voice-settings')); 
 }
 
 function localNow(){ const d=new Date(); return {date:iso(d),time:`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`}; }
@@ -415,10 +434,22 @@ async function planDay(){
   try{ const r=await fetch(`${API_BASE_URL}/plan-day`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:selectedISO(),tasks})}); const d=await r.json(); if(!r.ok)throw new Error(d.error||'Plan request failed'); const plan=d.plan; box.innerHTML=typeof plan==='string'?`<div class="ai-step linkified">${linkify(plan)}</div>`:`<pre class="ai-step">${esc(JSON.stringify(plan,null,2))}</pre>`; }catch(err){ box.innerHTML=`<div class="ai-step">AI server unavailable: ${esc(err.message)}</div>`; }
 }
 
+let analyticsController=null, voiceController=null;
+function showWorkspace(name='dashboard'){
+  $('#dashboardView')?.classList.toggle('d-none',name!=='dashboard');
+  $('#weekStrip')?.classList.toggle('d-none',name!=='dashboard');
+  $('#rolloverAlert')?.classList.toggle('d-none',name!=='dashboard');
+  $('#analyticsScreen')?.classList.toggle('d-none',name!=='analytics');
+  $('#assistantScreen')?.classList.toggle('d-none',name!=='assistant');
+  if(name==='analytics') analyticsController?.render?.();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
 function bind(){
   $('#activityReviewForm').onsubmit=saveActivityReview; $('#reviewActivityBtn').onclick=openActivityReview; $('#addDailyBlockBtn').onclick=openDailyBlock; $('#dailyBlockForm').onsubmit=saveDailyBlock; $('#taskTitle').oninput=renderTaskSuggestions;
   $('#mobileMenu').onclick=()=>toggleSidebar(true); $('#closeSidebarBtn').onclick=()=>toggleSidebar(false); $('#settingsBtn').onclick=()=>showModal('#settingsModal');
-  ['settingCompact','settingSidebarOpen','settingShowCompleted','settingSlideshow','settingAutoPlan','settingActivityBatch'].forEach(id=>$(`#${id}`).onchange=saveSettings);
+  $('#analyticsNavBtn').onclick=()=>showWorkspace('analytics'); $('#assistantNavBtn').onclick=()=>showWorkspace('assistant'); $('#analyticsBack').onclick=()=>showWorkspace('dashboard'); $('#assistantBack').onclick=()=>showWorkspace('dashboard');
+  ['settingCompact','settingSidebarOpen','settingShowCompleted','settingSlideshow','settingAutoPlan','settingActivityBatch','settingVoiceEnabled','settingVoiceTalkBack','settingWakePhrase','settingWakePhraseText','settingVoiceSchedule','settingVoiceStart','settingVoiceEnd','settingVoiceRate'].forEach(id=>{const el=$(`#${id}`);if(el)el.onchange=saveSettings});
   $('#resetWidgetOrder').onclick=()=>{localStorage.removeItem('dashboard-v4-order');toast('Widget order reset. Reloading layout.');setTimeout(()=>location.reload(),400);};
   $('#todayBtn').onclick=()=>{state.selectedDate=new Date();render();}; $('#prevDay').onclick=()=>{state.selectedDate.setDate(state.selectedDate.getDate()-1);render();}; $('#nextDay').onclick=()=>{state.selectedDate.setDate(state.selectedDate.getDate()+1);render();};
   $('#globalSearch').oninput=e=>{state.search=e.target.value.trim().toLowerCase();renderTasks();};
@@ -431,9 +462,11 @@ function bind(){
   $('#planDayBtn').onclick=planDay; $('#galleryBtn').onclick=()=>openGallery(0); $('#galleryOpenAll').onclick=()=>openGallery(0);
   window.addEventListener('calendar:add-task',e=>openTask(null,e.detail?.date||selectedISO())); window.addEventListener('calendar:edit-task',e=>{const t=store.getById('tasks',e.detail?.id);if(t)viewTask(t);});
   document.addEventListener('click',e=>{ if(e.target.closest('.linkified a'))e.stopPropagation(); });
+  $$('[data-assistant-prompt]').forEach(b=>b.onclick=()=>{showWorkspace('assistant');voiceController?.send?.(b.dataset.assistantPrompt)});
+  document.querySelector('.nav-link.active')?.addEventListener('click',()=>showWorkspace('dashboard')); 
 }
 
 async function init(){
-  await store.init(); if(!(store.data.dayPlans||[]).some(x=>x.date===todayISO())) scheduleAutoPlan('daily-start'); initDeleteManager(store); initCalendarPopup(store); bind(); initDragAndFullscreen(); applySettings(); store.subscribe(()=>dispatchRender()); render(); renderCalendar();
+  await store.init(); if(!(store.data.dayPlans||[]).some(x=>x.date===todayISO())) scheduleAutoPlan('daily-start'); initDeleteManager(store); initCalendarPopup(store); bind(); initDragAndFullscreen(); applySettings(); analyticsController=initAnalytics(store,{apiBaseUrl:API_BASE_URL,onBack:()=>showWorkspace('dashboard')}); voiceController=initVoiceAssistant(store,{apiBaseUrl:API_BASE_URL,getSettings:()=>settings,saveSettings,toast}); store.subscribe(()=>dispatchRender()); render(); renderCalendar();
 }
 init().catch(e=>{console.error(e);toast('Unable to initialize the dashboard.');});
