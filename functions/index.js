@@ -500,6 +500,9 @@ before returning it.
           : [];
 
         const date = req.body?.date || null;
+        const blocks = Array.isArray(req.body?.blocks) ? req.body.blocks.slice(0, 30) : [];
+        const recentActivity = Array.isArray(req.body?.recentActivity) ? req.body.recentActivity.slice(-80) : [];
+        const reason = req.body?.reason || 'manual';
 
         const client = getOpenAI();
 
@@ -509,13 +512,16 @@ before returning it.
             {
               role: "system",
               content:
-                "You are a productivity planning assistant for Tray Tasks. Build a realistic daily schedule from the supplied tasks. Respect priorities, deadlines, specified times, estimated durations, and reasonable breaks. Return concise JSON only.",
+                "You are the adaptive productivity planning assistant for Tray Tasks. Build a realistic daily schedule from open tasks AND fixed/variable life blocks such as work, sleep, school, and workouts. Recent activity history is behavioral evidence: use it to prefer time periods when similar actions are commonly completed, but never treat past patterns as hard requirements. Respect priorities, deadlines, specified times, durations, energy, transitions, and breaks. If this is an update after a meaningful change, re-plan the remaining day rather than rewriting completed time. Return concise JSON only with summary, schedule, reminders, and adjustments.",
             },
             {
               role: "user",
               content: JSON.stringify({
                 date,
                 tasks,
+                blocks,
+                recentActivity,
+                reason,
               }),
             },
           ],

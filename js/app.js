@@ -2,6 +2,7 @@ import { store } from './store.js';
 import { initCalendarPopup, renderCalendar } from './calendar-popup.js';
 import { initDeleteManager, requestDelete } from './delete-manager.js';
 import { iso, occursOn, isOccurrenceComplete, taskOccurrencesForDate, recurrenceLabel } from './recurrence.js';
+import { partOfDay, minutesBetween, activityStats, suggestionsFor } from './activity-engine.js';
 
 const API_BASE_URL = 'https://us-central1-tray-tasks.cloudfunctions.net/api';
 const $ = s => document.querySelector(s);
@@ -22,11 +23,13 @@ const state = {
   advanced: {text:'',category:'',priority:'',status:'',goalId:'',projectId:'',frequency:''},
   galleryIndex: 0,
   slideshowTimer: null,
+  reminderTimer: null,
+  reminderIndex: 0,
   renderTimer: null,
 };
 
 const SETTINGS_KEY = 'command-center-v4-settings';
-const defaultSettings = { compact:false, sidebarOpen:true, showCompleted:true, slideshow:true };
+const defaultSettings = { compact:false, sidebarOpen:true, showCompleted:true, slideshow:true, activityBatchSize:3, autoDayPlan:true };
 let settings = {...defaultSettings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')};
 
 function toast(message){ const e=$('#toast'); if(!e) return console.info(message); e.textContent=message; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),2300); }
@@ -55,6 +58,8 @@ function saveSettings(){
     sidebarOpen: $('#settingSidebarOpen')?.checked ?? settings.sidebarOpen,
     showCompleted: $('#settingShowCompleted')?.checked ?? settings.showCompleted,
     slideshow: $('#settingSlideshow')?.checked ?? settings.slideshow,
+    autoDayPlan: $('#settingAutoPlan')?.checked ?? settings.autoDayPlan,
+    activityBatchSize: Number($('#settingActivityBatch')?.value||settings.activityBatchSize||3),
   };
   localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));
   applySettings();
@@ -66,8 +71,38 @@ function applySettings(){
   if($('#settingSidebarOpen')) $('#settingSidebarOpen').checked=!!settings.sidebarOpen;
   if($('#settingShowCompleted')) $('#settingShowCompleted').checked=!!settings.showCompleted;
   if($('#settingSlideshow')) $('#settingSlideshow').checked=!!settings.slideshow;
+  if($('#settingAutoPlan')) $('#settingAutoPlan').checked=!!settings.autoDayPlan;
+  if($('#settingActivityBatch')) $('#settingActivityBatch').value=String(settings.activityBatchSize||3);
   startSlideshow();
 }
+
+function localNow(){ const d=new Date(); return {date:iso(d),time:`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`}; }
+function pendingActivity(){ return (store.data.activityLogs||[]).filter(x=>x.needsReview); }
+async function recordActivity({type,title,sourceCollection='',sourceId='',date='',time='',endTime='',durationMinutes=0,needsReview=false,meta={}}){
+  const now=localNow(), actualDate=date||now.date, actualTime=time||now.time;
+  return store.upsert('activityLogs',{id:uid(),type,title,sourceCollection,sourceId,date:actualDate,time:actualTime,endTime:endTime||'',durationMinutes:Number(durationMinutes)||minutesBetween(actualTime,endTime),partOfDay:partOfDay(actualTime),needsReview,meta,createdAt:Date.now(),updatedAt:Date.now()});
+}
+function maybeReviewActivity(){ const pending=pendingActivity(); const size=Math.max(2,Number(settings.activityBatchSize)||3); if(pending.length>=size) setTimeout(openActivityReview,450); }
+function openActivityReview(){
+  const rows=pendingActivity().slice(0,8); if(!rows.length)return toast('No completion times need review.');
+  $('#activityReviewList').innerHTML=rows.map(x=>`<div class="activity-review-row" data-review-id="${x.id}"><div class="activity-name"><strong>${esc(x.title)}</strong><small>${esc(x.type)} · marked complete ${new Date(x.createdAt).toLocaleString()}</small></div><div><label class="form-label">Day</label><input class="form-control review-date" type="date" value="${esc(x.date||todayISO())}"></div><div><label class="form-label">Time</label><input class="form-control review-time" type="time" value="${esc(x.time||'')}"></div><div><label class="form-label">Part of day</label><input class="form-control review-part" value="${esc(x.partOfDay||partOfDay(x.time))}" readonly></div></div>`).join('');
+  $$('.review-time').forEach(i=>i.oninput=()=>{i.closest('.activity-review-row').querySelector('.review-part').value=partOfDay(i.value)}); showModal('#activityReviewModal');
+}
+async function saveActivityReview(e){ e.preventDefault(); for(const row of $$('#activityReviewList [data-review-id]')){ const x=store.getById('activityLogs',row.dataset.reviewId); if(!x)continue; const time=row.querySelector('.review-time').value; await store.upsert('activityLogs',{...x,date:row.querySelector('.review-date').value,time,partOfDay:partOfDay(time),needsReview:false,updatedAt:Date.now()}); } closeModal('#activityReviewModal'); toast('Activity history updated'); scheduleAutoPlan('activity-review'); }
+function openDailyBlock(){ $('#dailyBlockForm').reset(); $('#dailyBlockId').value=''; $('#dailyBlockDate').value=selectedISO(); showModal('#dailyBlockModal'); }
+async function saveDailyBlock(e){ e.preventDefault(); const type=$('#dailyBlockType').value,date=$('#dailyBlockDate').value,start=$('#dailyBlockStart').value,end=$('#dailyBlockEnd').value,title=$('#dailyBlockTitle').value.trim()||type[0].toUpperCase()+type.slice(1),durationMinutes=minutesBetween(start,end); const block={id:uid(),type,title,date,startTime:start,endTime:end,durationMinutes,partOfDay:partOfDay(start),quality:$('#dailyBlockQuality').value,notes:$('#dailyBlockNotes').value.trim(),createdAt:Date.now(),updatedAt:Date.now()}; await store.upsert('dailyBlocks',block); await recordActivity({type,title,sourceCollection:'dailyBlocks',sourceId:block.id,date,time:start,endTime:end,durationMinutes,needsReview:false}); closeModal('#dailyBlockModal'); toast(`${title} logged`); scheduleAutoPlan(type); }
+function renderActivityStats(){ const logs=store.data.activityLogs||[], recent=logs.filter(x=>Date.now()-Number(x.createdAt||0)<30*86400000),stats=activityStats(recent), topPart=Object.entries(stats.byPart).sort((a,b)=>b[1]-a[1])[0]; $('#activityStats').innerHTML=`<div class="activity-stat"><strong>${stats.count}</strong><small>actions · 30 days</small></div><div class="activity-stat"><strong>${Math.round(stats.minutes/60)}h</strong><small>tracked time</small></div><div class="activity-stat"><strong>${esc(topPart?.[0]||'—')}</strong><small>most active period</small></div><div class="activity-stat"><strong>${pendingActivity().length}</strong><small>times to confirm</small></div>`; }
+function renderHabitIntelligence(){
+  const c=$('#habitList'),logs=(store.data.activityLogs||[]).filter(x=>!x.needsReview),groups={}; logs.forEach(x=>{const k=(x.title||x.type).toLowerCase();(groups[k]??={title:x.title||x.type,count:0,parts:{},days:new Set()});const g=groups[k];g.count++;g.parts[x.partOfDay]=(g.parts[x.partOfDay]||0)+1;g.days.add(x.date)}); const auto=Object.values(groups).filter(x=>x.count>=2).sort((a,b)=>b.count-a.count).slice(0,6);
+  const manual=(store.data.habits||[]).slice(0,4).map(x=>`<div class="rich-item" data-view-item="habit:${x.id}"><span><strong>${esc(x.title)}</strong><small>${esc(x.frequency||'Habit')}</small></span></div>`).join('');
+  const patterns=auto.map(x=>{const part=Object.entries(x.parts).sort((a,b)=>b[1]-a[1])[0]?.[0]||'varied';return `<div class="pattern-chip"><strong>${esc(x.title)}</strong><small>${x.count} times · ${x.days.size} days · usually ${esc(part)}</small></div>`}).join(''); c.innerHTML=manual+(patterns?`<div class="pattern-list">${patterns}</div>`:'<p class="muted">Complete and time a few activities to discover patterns automatically.</p>'); bindViewItems();
+}
+function reminderItems(){ const date=selectedISO(),tasks=taskOccurrencesForDate(store.data.tasks||[],date).filter(x=>!x.completed).map(x=>({kind:'task',title:x.title,sub:x.startTime?`${fmtTime(x.startTime)} · ${x.priority}`:`${x.priority} priority`,id:x.id})); const blocks=(store.data.dailyBlocks||[]).filter(x=>x.date===date).map(x=>({kind:'block',title:x.title,sub:`${fmtTime(x.startTime)}${x.endTime?` – ${fmtTime(x.endTime)}`:''} · ${x.type}`,id:x.id})); const plan=(store.data.dayPlans||[]).find(x=>x.date===date); const ai=plan?[{kind:'plan',title:'AI day plan',sub:plan.summary||'Your plan is ready',id:plan.id}]:[]; return [...ai,...blocks,...tasks].slice(0,12); }
+function renderReminders(){ const items=reminderItems(),box=$('#reminderCarousel'),dots=$('#reminderDots'); if(!items.length){box.innerHTML='<div class="empty-state compact-empty"><p>No reminders yet. Add a task or daily activity.</p></div>';dots.innerHTML='';return;} state.reminderIndex=Math.min(state.reminderIndex,items.length-1); const x=items[state.reminderIndex]; box.innerHTML=`<div class="reminder-card" data-reminder-kind="${x.kind}" data-reminder-id="${x.id}"><span class="eyebrow">${esc(x.kind.toUpperCase())}</span><strong>${esc(x.title)}</strong><small>${esc(x.sub)}</small></div>`; dots.innerHTML=items.map((_,i)=>`<i class="${i===state.reminderIndex?'active':''}"></i>`).join(''); box.querySelector('.reminder-card').onclick=()=>{if(x.kind==='task')viewTask(store.getById('tasks',x.id)); if(x.kind==='plan')openDayPlan(x.id)}; clearInterval(state.reminderTimer); state.reminderTimer=setInterval(()=>{state.reminderIndex=(state.reminderIndex+1)%items.length;renderReminders()},9000); }
+function openDayPlan(id){ const p=store.getById('dayPlans',id); if(!p)return; $('#viewEyebrow').textContent='AI DAY PLAN';$('#viewTitle').textContent=p.date;$('#viewBody').innerHTML=`<div class="detail-card"><pre class="ai-step">${esc(typeof p.plan==='string'?p.plan:JSON.stringify(p.plan,null,2))}</pre></div>`;$('#viewFooter').innerHTML='';showModal('#viewModal'); }
+async function buildAutoDayPlan(reason='daily'){ const date=todayISO(),tasks=taskOccurrencesForDate(store.data.tasks||[],date).filter(t=>!t.completed),blocks=(store.data.dailyBlocks||[]).filter(x=>x.date===date),recent=(store.data.activityLogs||[]).filter(x=>Date.now()-Number(x.createdAt||0)<14*86400000&&!x.needsReview).slice(-80); if(!tasks.length&&!blocks.length)return; try{const r=await fetch(`${API_BASE_URL}/plan-day`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date,tasks,blocks,recentActivity:recent,reason})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Plan failed');const old=(store.data.dayPlans||[]).find(x=>x.date===date);await store.upsert('dayPlans',{id:old?.id||`plan-${date}`,date,plan:d.plan,summary:'Updated from today’s tasks and tracked activity',reason,updatedAt:Date.now(),createdAt:old?.createdAt||Date.now()});}catch(err){console.warn('Auto day plan unavailable',err)}}
+function scheduleAutoPlan(reason){ if(!settings.autoDayPlan)return; const key='cc-last-auto-plan',last=Number(localStorage.getItem(key)||0); if(Date.now()-last<10*60*1000)return; localStorage.setItem(key,String(Date.now())); setTimeout(()=>buildAutoDayPlan(reason),700); }
+function renderTaskSuggestions(){ const input=$('#taskTitle'),box=$('#taskSuggestions'); const rows=suggestionsFor(input.value,store); if(!rows.length){box.classList.add('d-none');box.innerHTML='';return;} box.innerHTML=rows.map(x=>`<button type="button" class="typeahead-item" data-suggest-title="${esc(x.title)}"><strong>${esc(x.title)}</strong><small>Done/used ${x.count} times</small></button>`).join('');box.classList.remove('d-none');$$('[data-suggest-title]').forEach(b=>b.onclick=()=>{input.value=b.dataset.suggestTitle;box.classList.add('d-none')}); }
 
 function completionForGoal(goal){
   const linked=(store.data.tasks||[]).filter(t=>t.goalId===goal.id);
@@ -89,7 +124,7 @@ function savingsTotal(s){ return Number(s.startingAmount||0)+(s.transactions||[]
 function goalTarget(goal){ return Number(goal?.targetAmount||0); }
 
 function render(){
-  renderHeader(); renderRollover(); renderWeek(); renderTasks(); renderTimeline(); renderGoals(); renderProjects(); renderHabits(); renderNotes(); renderShopping(); renderWorkouts(); renderSavings(); renderGalleryWidget(); renderStats();
+  renderHeader(); renderRollover(); renderWeek(); renderTasks(); renderTimeline(); renderGoals(); renderProjects(); renderHabits(); renderNotes(); renderShopping(); renderWorkouts(); renderSavings(); renderGalleryWidget(); renderStats(); renderActivityStats(); renderReminders();
 }
 function renderHeader(){
   $('#pageTitle').textContent=state.selectedDate.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
@@ -157,7 +192,7 @@ function renderProjects(){
   const c=$('#projectList'); c.innerHTML=(store.data.projects||[]).slice(0,8).map(p=>{ const tasks=(store.data.tasks||[]).filter(t=>t.projectId===p.id),done=tasks.filter(t=>t.completed).length; return `<div class="rich-item" data-view-item="project:${p.id}"><span><strong>${esc(p.title)}</strong><small>${done}/${tasks.length} linked tasks complete</small>${p.details?`<small class="linkified">${linkify(p.details.slice(0,150))}</small>`:''}</span></div>`; }).join('')||'<p class="muted">No projects yet.</p>';
   bindViewItems();
 }
-function renderHabits(){ renderSimple('habits','#habitList','habit'); }
+function renderHabits(){ renderHabitIntelligence(); }
 function renderNotes(){
   const c=$('#notesList'); c.innerHTML=(store.data.notes||[]).slice(0,7).map(n=>`<div class="note-item" data-view-item="note:${n.id}"><i class="bi bi-lightbulb"></i><span><strong>${esc(n.title)}</strong><small class="linkified">${linkify((n.details||'').slice(0,220))}</small></span></div>`).join('')||'<p class="muted">Capture an idea and let AI turn it into action.</p>'; bindViewItems();
 }
@@ -229,7 +264,7 @@ function openView(type,id){
   } else if(type==='workout'){
     const exercises=item.exercises||[];
     body=`<div class="detail-grid"><div class="detail-card"><h4>Routine</h4><p>${esc(item.schedule||'Any day')} · ${item.targetMinutes||60} min${item.goalId?` · Goal: ${esc(goalById(item.goalId)?.title||'')}`:''}</p><div class="linkified">${linkify(item.notes||'')}</div></div><div class="detail-card"><h4>Exercises</h4><div class="detail-list">${exercises.map((x,i)=>`<div class="workout-exercise"><strong>${i+1}. ${esc(x.name)}</strong><small>${esc(x.sets||'')} sets · ${esc(x.reps||'')} reps${x.weight?` · ${esc(x.weight)} weight`:''}${x.restSeconds?` · ${esc(x.restSeconds)}s rest`:''}</small>${x.notes?`<div class="linkified mt-1">${linkify(x.notes)}</div>`:''}</div>`).join('')||'<p class="muted">No exercises added.</p>'}</div></div></div>`;
-    footer=`<button class="btn btn-outline-light" data-edit-workout="${id}"><i class="bi bi-pencil"></i> Edit routine</button>`;
+    footer=`<button class="btn btn-outline-light" data-edit-workout="${id}"><i class="bi bi-pencil"></i> Edit routine</button><button class="btn btn-success" data-log-workout="${id}"><i class="bi bi-check2"></i> Log workout</button>`;
   } else if(type==='savings'){
     const current=savingsTotal(item),goal=goalById(item.goalId),target=Number(item.targetAmount||goal?.targetAmount||0),pct=target?Math.round(current/target*100):0;
     body=`<div class="detail-card"><h4>Savings progress</h4><div class="money fs-2 fw-bold">${money(current)}</div><p>${target?`${pct}% of ${money(target)} · ${money(Math.max(0,target-current))} remaining`:'No target set'}${goal?`<br>Linked goal: ${esc(goal.title)}`:''}</p><div class="progress"><div class="progress-bar" style="width:${Math.min(100,pct)}%"></div></div><div class="linkified mt-3">${linkify(item.note||'')}</div><div class="savings-history">${(item.transactions||[]).slice().reverse().map(t=>`<div><span>${esc(t.date||'')}</span><strong>+${money(t.amount)}</strong></div>`).join('')}</div></div>`;
@@ -259,6 +294,7 @@ function bindViewModalActions(task=null){
   $$('[data-feature-picture]').forEach(b=>b.onclick=async()=>{ if(!task)return; const index=Number(b.dataset.featurePicture); const attachments=(task.attachments||[]).map((a,i)=>i===index?{...a,featured:!a.featured}:a); await store.upsert('tasks',{...task,attachments,updatedAt:Date.now()}); viewTask(store.getById('tasks',task.id)); });
   $('[data-edit-view]')?.addEventListener('click',()=>{ const [type,id]=$('[data-edit-view]').dataset.editView.split(':'); const col=type==='goal'?'goals':type==='project'?'projects':type==='shopping'?'shopping':type==='note'?'notes':type==='habit'?'habits':type; const item=store.getById(col,id); closeModal('#viewModal'); setTimeout(()=>openItem(type,item),220); });
   $('[data-edit-workout]')?.addEventListener('click',()=>{ const w=store.getById('workouts',$('[data-edit-workout]').dataset.editWorkout); closeModal('#viewModal'); setTimeout(()=>openWorkout(w),220); });
+  $('[data-log-workout]')?.addEventListener('click',async()=>{const w=store.getById('workouts',$('[data-log-workout]').dataset.logWorkout);if(!w)return;const now=localNow();await recordActivity({type:'workout',title:w.title,sourceCollection:'workouts',sourceId:w.id,date:now.date,time:now.time,durationMinutes:w.targetMinutes||60,needsReview:true,meta:{goalId:w.goalId||''}});closeModal('#viewModal');maybeReviewActivity();scheduleAutoPlan('workout-completed');toast('Workout logged');});
   $('[data-edit-savings]')?.addEventListener('click',()=>{ const s=store.getById('savings',$('[data-edit-savings]').dataset.editSavings); closeModal('#viewModal'); setTimeout(()=>openSavings(s),220); });
   $('[data-new-project-task]')?.addEventListener('click',()=>{ const projectId=$('[data-new-project-task]').dataset.newProjectTask; closeModal('#viewModal'); setTimeout(()=>openTask(null,selectedISO(),{projectId}),220); });
 }
@@ -267,6 +303,7 @@ async function setTaskComplete(t,checked,dateISO){
   if(t.frequency&&t.frequency!=='Once'){
     const set=new Set(t.completedDates||[]); checked?set.add(dateISO):set.delete(dateISO); await store.upsert('tasks',{...t,completedDates:[...set],updatedAt:Date.now()});
   } else await store.upsert('tasks',{...t,completed:checked,updatedAt:Date.now()});
+  if(checked){ const now=localNow(); await recordActivity({type:'task',title:t.title,sourceCollection:'tasks',sourceId:t.id,date:dateISO||now.date,time:now.time,needsReview:true,meta:{category:t.category||'',projectId:t.projectId||'',goalId:t.goalId||''}}); maybeReviewActivity(); scheduleAutoPlan('task-completed'); }
   toast(checked?'Task completed':'Task reopened');
 }
 
@@ -301,7 +338,7 @@ async function saveItem(e){
   e.preventDefault(); const type=$('#itemType').value,[col,label]=itemConfig[type],id=$('#itemId').value,old=id?store.getById(col,id):null,title=$('#itemTitle').value.trim(); if(!title)return $('#itemError').textContent='Title is required.';
   try{
     const item={...old,id:id||uid(),title,details:$('#itemDetails').value.trim(),targetDate:type==='goal'?$('#itemDate').value:'',targetAmount:type==='goal'?Number($('#itemGoalAmount').value)||0:old?.targetAmount||0,manualProgress:type==='goal'?Number($('#itemManualProgress').value)||0:0,frequency:type==='habit'?$('#itemFrequency').value:'',quantity:type==='shopping'?Number($('#itemQuantity').value)||1:null,cost:type==='shopping'?Number($('#itemCost').value)||0:null,purchased:type==='shopping'?$('#itemPurchased').value==='true':false,goalId:type==='shopping'?$('#itemGoal').value:'',projectId:type==='shopping'?$('#itemProject').value:'',createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()};
-    await store.upsert(col,item); closeModal('#itemModal'); toast(`${label} saved`);
+    await store.upsert(col,item); if(type==='shopping' && item.purchased && !old?.purchased){const now=localNow();await recordActivity({type:'shopping',title:item.title,sourceCollection:'shopping',sourceId:item.id,date:now.date,time:now.time,needsReview:true,meta:{cost:item.cost,quantity:item.quantity,projectId:item.projectId,goalId:item.goalId}});maybeReviewActivity();scheduleAutoPlan('shopping-completed');} closeModal('#itemModal'); toast(`${label} saved`);
   }catch(err){ $('#itemError').textContent=err.message||'Unable to save.'; }
 }
 function deleteItem(){ const type=$('#itemType').value,[col]=itemConfig[type],x=store.getById(col,$('#itemId').value); if(!x)return; closeModal('#itemModal'); setTimeout(()=>requestDelete({type:col,id:x.id,title:x.title,afterDelete:render}),220); }
@@ -379,8 +416,9 @@ async function planDay(){
 }
 
 function bind(){
+  $('#activityReviewForm').onsubmit=saveActivityReview; $('#reviewActivityBtn').onclick=openActivityReview; $('#addDailyBlockBtn').onclick=openDailyBlock; $('#dailyBlockForm').onsubmit=saveDailyBlock; $('#taskTitle').oninput=renderTaskSuggestions;
   $('#mobileMenu').onclick=()=>toggleSidebar(true); $('#closeSidebarBtn').onclick=()=>toggleSidebar(false); $('#settingsBtn').onclick=()=>showModal('#settingsModal');
-  ['settingCompact','settingSidebarOpen','settingShowCompleted','settingSlideshow'].forEach(id=>$(`#${id}`).onchange=saveSettings);
+  ['settingCompact','settingSidebarOpen','settingShowCompleted','settingSlideshow','settingAutoPlan','settingActivityBatch'].forEach(id=>$(`#${id}`).onchange=saveSettings);
   $('#resetWidgetOrder').onclick=()=>{localStorage.removeItem('dashboard-v4-order');toast('Widget order reset. Reloading layout.');setTimeout(()=>location.reload(),400);};
   $('#todayBtn').onclick=()=>{state.selectedDate=new Date();render();}; $('#prevDay').onclick=()=>{state.selectedDate.setDate(state.selectedDate.getDate()-1);render();}; $('#nextDay').onclick=()=>{state.selectedDate.setDate(state.selectedDate.getDate()+1);render();};
   $('#globalSearch').oninput=e=>{state.search=e.target.value.trim().toLowerCase();renderTasks();};
@@ -396,6 +434,6 @@ function bind(){
 }
 
 async function init(){
-  await store.init(); initDeleteManager(store); initCalendarPopup(store); bind(); initDragAndFullscreen(); applySettings(); store.subscribe(()=>dispatchRender()); render(); renderCalendar();
+  await store.init(); if(!(store.data.dayPlans||[]).some(x=>x.date===todayISO())) scheduleAutoPlan('daily-start'); initDeleteManager(store); initCalendarPopup(store); bind(); initDragAndFullscreen(); applySettings(); store.subscribe(()=>dispatchRender()); render(); renderCalendar();
 }
 init().catch(e=>{console.error(e);toast('Unable to initialize the dashboard.');});

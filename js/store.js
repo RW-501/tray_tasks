@@ -2,7 +2,7 @@ import { firebaseConfig, firebaseEnabled } from './firebase-config.js';
 
 const LOCAL_STORAGE_KEY = 'rons-command-center-v4';
 const LEGACY_KEYS = ['rons-todo-calendar-v3', 'rons-todo-calendar-v2', 'rons-todo-calendar-v1'];
-export const COLLECTIONS = ['tasks','events','goals','habits','notes','shopping','workouts','projects','savings'];
+export const COLLECTIONS = ['tasks','events','goals','habits','notes','shopping','workouts','projects','savings','activityLogs','dailyBlocks','dayPlans'];
 
 let db = null;
 let firestoreApi = null;
