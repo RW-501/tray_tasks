@@ -8,7 +8,7 @@ export async function requirePrivateSession(app) {
   overlay.id = 'privateGate';
   overlay.innerHTML = `<div class="private-card"><h2>Private Command Center</h2><p>Sign in to sync your private data across devices.</p><form id="privateForm"><label>Email<input type="email" id="privateEmail" autocomplete="username" required></label><label>Password<input type="password" id="privatePassword" autocomplete="current-password" required></label><button type="submit">Sign in</button></form><p id="privateError" role="alert"></p></div>`;
   document.body.append(overlay);
-  if (!ownerUid || ownerUid === 'REPLACE_WITH_YOUR_FIREBASE_AUTH_UID') {
+  if (!ownerUid || ownerUid === 'KlvIvSRpWparxUGkj9AzV0VkZYn1') {
     overlay.querySelector('#privateError').textContent = 'Setup required: configure owner UID and deploy restrictive Firebase rules before use.';
     overlay.querySelector('button').disabled = true;
     throw new Error('Owner UID not configured');
