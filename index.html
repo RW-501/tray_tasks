@@ -1,11 +1,15 @@
 <!doctype html>
 <html lang="en">
 <head>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Command Center">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Ron's AI-powered task command center">
   <meta name="theme-color" content="#080b18">
-  <title>Ron's Command Center V6</title>
+  <title>Ron's Command Center V9</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -140,6 +144,11 @@
 <div class="modal fade" id="v7HabitHistoryModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content dark-modal"><div class="modal-header"><h2 class="modal-title fs-5">Habit history</h2><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body" id="v7HabitHistory"></div></div></div></div>
 <div class="modal fade" id="v7AnalyticsModal" tabindex="-1"><div class="modal-dialog modal-fullscreen modal-dialog-scrollable"><div class="modal-content dark-modal"><div class="modal-header"><h2 class="modal-title fs-5">Productivity Analytics</h2><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body" id="v7AnalyticsHost"></div></div></div></div>
 <div class="modal fade" id="v7AssistantModal" tabindex="-1"><div class="modal-dialog modal-fullscreen modal-dialog-scrollable"><div class="modal-content dark-modal"><div class="modal-header"><h2 class="modal-title fs-5">Tray Assistant</h2><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body" id="v7AssistantHost"></div></div></div></div>
+
+<!-- V8 FINANCIAL RECONCILIATION + BACKUP -->
+<div class="modal fade" id="v8ReviewModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content dark-modal"><div class="modal-header"><h2 class="modal-title fs-5">Balance changes & reconciliation</h2><button class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p class="muted">Compare account snapshots with purchases and planned income. These are possible explanations, not verified transactions. Classify each change to improve your records.</p><div id="v8ReconcileList"></div></div><div class="modal-footer"><button class="btn btn-outline-light" data-bs-dismiss="modal">Close</button></div></div></div></div>
+<div class="modal fade" id="v8MediaModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content dark-modal"><div class="modal-header"><h2 class="modal-title fs-5">Note media library</h2><button class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><div id="v8MediaList" class="v8-media-grid"></div></div></div></div></div>
+<div class="modal fade" id="v8BackupModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content dark-modal"><div class="modal-header"><h2 class="modal-title fs-5">Data backup & privacy</h2><button class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p>Export a local JSON backup of your Command Center records. This includes sensitive financial and activity data; store it securely. Media files remain in Firebase Storage and are referenced by URL.</p><button id="v8ExportBtn" class="btn btn-neon">Export JSON backup</button><hr><label class="form-check"><input type="checkbox" id="v8TrackUsage" class="form-check-input" checked> <span class="form-check-label">Allow usage history tracking on this device</span></label><p class="muted">Location is not collected by this upgrade. Browser and device identification are approximate. The current V7 tracking module may still record an initial open event.</p></div></div></div></div>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

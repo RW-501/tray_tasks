@@ -1,3 +1,4 @@
+import {initV8} from './v8-upgrades.js';
 import {initV7,logV7Action} from './v7-upgrades.js';
 import { store } from './store.js';
 import { initCalendarPopup, renderCalendar } from './calendar-popup.js';
@@ -235,7 +236,7 @@ function renderSavings(){
 function allTaskPictures(){
   return (store.data.tasks||[]).flatMap(task=>(task.attachments||[]).filter(a=>String(a.type||'').startsWith('image/')).map(a=>({...a,taskId:task.id,taskTitle:task.title}))).sort((a,b)=>Number(b.featured)-Number(a.featured));
 }
-function galleryPictures(){ const all=allTaskPictures(); const featured=all.filter(x=>x.featured); return featured.length?featured:all; }
+function galleryPictures(){ const all=[...allTaskPictures(),...(store.data.notes||[]).flatMap(n=>(n.attachments||[]).filter(a=>String(a.type||'').startsWith('image/')).map(a=>({...a,taskId:'',taskTitle:n.title||'Note',noteId:n.id})))]; const featured=all.filter(x=>x.featured); return featured.length?featured:all; }
 function renderGalleryWidget(){
   const pics=galleryPictures().slice(0,6); const c=$('#galleryWidget'); c.innerHTML=pics.length?pics.map((p,i)=>`<button data-gallery-index="${i}" title="${esc(p.taskTitle)}"><img src="${esc(p.url)}" alt="${esc(p.name||p.taskTitle)}"></button>`).join(''):'<p class="muted">Upload pictures to tasks, then mark favorites for this board.</p>';
   $$('[data-gallery-index]').forEach(b=>b.onclick=()=>openGallery(Number(b.dataset.galleryIndex)));
@@ -468,6 +469,6 @@ function bind(){
 }
 
 async function init(){
-  await store.init(); if(!(store.data.dayPlans||[]).some(x=>x.date===todayISO())) scheduleAutoPlan('daily-start'); initDeleteManager(store); initCalendarPopup(store); bind(); initV7(store,{openItem,showModal,closeModal,render}); initDragAndFullscreen(); applySettings(); analyticsController=initAnalytics(store,{apiBaseUrl:API_BASE_URL,onBack:()=>showWorkspace('dashboard')}); voiceController=initVoiceAssistant(store,{apiBaseUrl:API_BASE_URL,getSettings:()=>settings,saveSettings,toast}); store.subscribe(()=>dispatchRender()); render(); renderCalendar();
+  await store.init(); if(!(store.data.dayPlans||[]).some(x=>x.date===todayISO())) scheduleAutoPlan('daily-start'); initDeleteManager(store); initCalendarPopup(store); bind(); initV7(store,{openItem,showModal,closeModal,render}); initV8(store,{render}); initDragAndFullscreen(); applySettings(); analyticsController=initAnalytics(store,{apiBaseUrl:API_BASE_URL,onBack:()=>showWorkspace('dashboard')}); voiceController=initVoiceAssistant(store,{apiBaseUrl:API_BASE_URL,getSettings:()=>settings,saveSettings,toast}); store.subscribe(()=>dispatchRender()); render(); renderCalendar();
 }
 init().catch(e=>{console.error(e);toast('Unable to initialize the dashboard.');});

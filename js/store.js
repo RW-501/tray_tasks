@@ -1,8 +1,9 @@
 import { firebaseConfig, firebaseEnabled } from './firebase-config.js';
 
+import { requirePrivateSession } from './private-auth.js';
 const LOCAL_STORAGE_KEY = 'rons-command-center-v4';
 const LEGACY_KEYS = ['rons-todo-calendar-v3', 'rons-todo-calendar-v2', 'rons-todo-calendar-v1'];
-export const COLLECTIONS = ['tasks','events','goals','habits','notes','shopping','workouts','projects','savings','activityLogs','dailyBlocks','dayPlans','accounts','accountHistory','usageLogs'];
+export const COLLECTIONS = ['tasks','events','goals','habits','notes','shopping','workouts','projects','savings','activityLogs','dailyBlocks','dayPlans','accounts','accountHistory','usageLogs','balanceExplanations'];
 
 let db = null;
 let firestoreApi = null;
@@ -69,17 +70,18 @@ export const store = {
       const appApi = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js');
       firestoreApi = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js');
       firebaseApp = appApi.getApps().length ? appApi.getApp() : appApi.initializeApp(firebaseConfig);
+      await requirePrivateSession(firebaseApp);
       db = firestoreApi.getFirestore(firebaseApp);
       this.mode = 'firebase';
       this.data = emptyData();
       await this.startRealtime();
       return this.data;
     } catch (error) {
-      console.error('Firebase unavailable; using local storage.', error);
-      this.mode = 'local';
-      this.data = localRead();
-      emitChange({ source: 'fallback-local' });
-      return this.data;
+      console.error('Private Firebase initialization failed.', error);
+      this.mode = 'locked';
+      this.data = emptyData();
+      emitChange({ source: 'locked' });
+      throw error;
     }
   },
 
@@ -122,6 +124,7 @@ export const store = {
     if (!COLLECTIONS.includes(type)) throw new Error(`Invalid collection: ${type}`);
     if (!item?.id) throw new Error(`${type} item requires an id`);
 
+    if (this.mode === 'locked') throw new Error('Private session required');
     if (this.mode === 'firebase') {
       const { doc, setDoc } = firestoreApi;
       await setDoc(doc(db, type, String(item.id)), item, { merge: true });
@@ -134,6 +137,7 @@ export const store = {
 
   async upsert(type, item) {
     if (!COLLECTIONS.includes(type)) throw new Error(`Invalid collection: ${type}`);
+    if (this.mode === 'locked') throw new Error('Private session required');
     const list = this.data[type] ||= [];
     const index = list.findIndex(x => x.id === item.id);
     if (index >= 0) list[index] = { ...list[index], ...item };
@@ -146,6 +150,7 @@ export const store = {
 
   async remove(type, id) {
     if (!COLLECTIONS.includes(type)) throw new Error(`Invalid collection: ${type}`);
+    if (this.mode === 'locked') throw new Error('Private session required');
     const before = [...(this.data[type] || [])];
     this.data[type] = before.filter(x => x.id !== id);
     try {

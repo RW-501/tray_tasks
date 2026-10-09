@@ -5,6 +5,7 @@ const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMon
 const open=id=>bootstrap.Modal.getOrCreateInstance($(id)).show();
 let usageSession=uid(), lastActivity=Date.now();
 export async function logV7Action(store,verb,title='',meta={}){
+ if(localStorage.getItem('cc-usage-optout')==='true')return;
  try{await store.upsert('usageLogs',{id:uid(),sessionId:usageSession,at:new Date().toISOString(),verb,title:String(title).slice(0,180),device:/Mobi|Android/i.test(navigator.userAgent)?'mobile/tablet':'desktop',...meta});}catch(e){console.warn('Usage log unavailable',e)}
 }
 export function initV7(store,{openItem,render}){
