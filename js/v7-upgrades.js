@@ -10,10 +10,11 @@ export async function logV7Action(store,verb,title='',meta={}){
 }
 export function initV7(store,{openItem,render}){
  const nav=$('.sidebar nav');const btn=(label,id)=>{const b=document.createElement('button');b.className='nav-link';b.innerHTML=label; b.onclick=()=>open(id);nav?.append(b)};
- const toolLinks=[['bi-wallet2','Money & Balances','#v7FinanceModal'],['bi-receipt','Spending History','#v7SpendingModal'],['bi-clock-history','Usage History','#v7UsageModal'],['bi-calendar-check','Habit History','#v7HabitHistoryModal'],['bi-graph-up','Productivity Analytics','#v7AnalyticsModal'],['bi-robot','Tray Assistant','#v7AssistantModal'],['bi-journal-text','Transactions','#moneyLedgerModal']];
+ const toolLinks=[['bi-activity','Unified Activity Timeline','#unifiedTimelineModal'],['bi-wallet2','Money & Balances','#v7FinanceModal'],['bi-receipt','Spending History','#v7SpendingModal'],['bi-clock-history','Usage History','#v7UsageModal'],['bi-calendar-check','Habit History','#v7HabitHistoryModal'],['bi-graph-up','Productivity Analytics','#v7AnalyticsModal'],['bi-robot','Tray Assistant','#v7AssistantModal'],['bi-journal-text','Transactions','#moneyLedgerModal']];
  const menuButton=document.createElement('button');menuButton.className='nav-link';menuButton.innerHTML='<i class="bi bi-grid-3x3-gap"></i> All tools';menuButton.addEventListener('click',()=>open('#ccAppsModal'));nav?.append(menuButton);
  $('#ccAppsGrid').innerHTML=toolLinks.map(([icon,label,id])=>`<div class="col-6 col-md-4"><button type="button" class="btn btn-outline-light w-100 h-100 py-3" data-tool-modal="${id}"><i class="bi ${icon} d-block fs-3 mb-2"></i>${esc(label)}</button></div>`).join('');
  $('#ccAppsGrid').addEventListener('click',e=>{const b=e.target.closest('[data-tool-modal]');if(!b)return;bootstrap.Modal.getInstance($('#ccAppsModal'))?.hide();setTimeout(()=>{if(b.dataset.toolModal==='#moneyLedgerModal')renderLedger();open(b.dataset.toolModal)},250)});
+ initUnifiedTimeline(store,{openItem});
  // Move the original Analytics/Assistant sidebar entries into the tool panel.
  for(const id of ['analyticsNavBtn','assistantNavBtn']){const el=$('#'+id);if(el)el.style.display='none';}
  // Relocate screens into proper Bootstrap modals without duplicating their IDs.
@@ -176,4 +177,93 @@ export function initV7(store,{openItem,render}){
  const mark=()=>{lastActivity=Date.now()};document.addEventListener('pointerdown',mark,{passive:true});document.addEventListener('keydown',mark,{passive:true});logV7Action(store,'opened Command Center');document.addEventListener('visibilitychange',()=>{logV7Action(store,document.hidden?'left screen':'returned to screen')});
  // Inactivity is a local heuristic, not precise time-on-task measurement.
  window.addEventListener('pagehide',()=>{try{sessionStorage.setItem('v7-last-session',JSON.stringify({sessionId:usageSession,endedAt:new Date().toISOString(),lastActivity}))}catch{}});
+}
+
+
+function initUnifiedTimeline(store,{openItem}){
+ const root=document.querySelector('#unifiedTimelineModal');
+ if(!root)return;
+ const $=q=>root.querySelector(q);
+ const defs=[
+  ['accountHistory','money','bi-wallet2'],['activityLogs','activity','bi-check2-circle'],
+  ['usageLogs','usage','bi-phone'],['tasks','tasks','bi-list-check'],
+  ['shopping','shopping','bi-bag-check'],['habits','habits','bi-arrow-repeat'],
+  ['workouts','workouts','bi-heart-pulse'],['goals','goals','bi-bullseye'],
+  ['projects','projects','bi-kanban'],['notes','notes','bi-journal-text'],
+  ['dailyBlocks','schedule','bi-calendar-event'],['dayPlans','plans','bi-calendar2-week']
+ ];
+ const fmt=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n);
+ const when=(x,collection)=>{
+   const v=collection==='accountHistory'?x.at:collection==='usageLogs'?x.at:
+    collection==='activityLogs'?(x.date&&x.time?x.date+'T'+x.time:x.at||x.date):
+    collection==='shopping'?(x.purchasedAt||x.updatedAt||x.createdAt):
+    (x.completedAt||x.updatedAt||x.createdAt||x.at||x.date||x.targetDate);
+   if(v?.toDate)return v.toDate();
+   if(v?.seconds)return new Date(v.seconds*1000);
+   if(typeof v==='number')return new Date(v);
+   if(typeof v==='string'){const d=new Date(v);if(!isNaN(d))return d;}
+   return null;
+ };
+ const title=(x,col)=>{
+   if(col==='accountHistory')return x.reason||x.kind||'Transaction';
+   if(col==='usageLogs')return [x.verb,x.title].filter(Boolean).join(' · ');
+   return x.title||x.name||x.label||x.type||col;
+ };
+ const all=()=>{
+   const items=[];
+   for(const [col,category,icon] of defs){
+    for(const x of store.getAll(col)){
+     const d=when(x,col);if(!d||isNaN(d))continue;
+     items.push({col,category,icon,x,d,key:col+':'+x.id});
+    }
+   }
+   // Linked transfers appear once, not once per account leg.
+   const transfers=new Set();
+   return items.filter(e=>{
+    if(e.col==='accountHistory'&&e.x.transferId){
+     if(transfers.has(e.x.transferId))return false;
+     transfers.add(e.x.transferId);
+    }
+    return true;
+   }).sort((a,b)=>b.d-a.d);
+ };
+ const render=()=>{
+   const search=$('#unifiedSearch').value.toLowerCase().trim(),category=$('#unifiedCategory').value,
+   from=$('#unifiedFrom').value,to=$('#unifiedTo').value;
+   const items=all().filter(e=>{
+    const day=[e.d.getFullYear(),String(e.d.getMonth()+1).padStart(2,'0'),String(e.d.getDate()).padStart(2,'0')].join('-');
+    return (!category||category===e.category)&&(!from||day>=from)&&(!to||day<=to)
+     &&(!search||[title(e.x,e.col),e.x.reason,e.x.details,e.x.linkType].join(' ').toLowerCase().includes(search));
+   });
+   const cap=Number($('#unifiedLimit').value||100),visible=items.slice(0,cap);
+   $('#unifiedCount').textContent=`${items.length} matching records · ${visible.length} shown. Times use this device's timezone.`;
+   const groups=new Map();
+   for(const e of visible){const day=e.d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});if(!groups.has(day))groups.set(day,[]);groups.get(day).push(e);}
+   $('#unifiedRows').innerHTML=[...groups].map(([day,entries])=>`<section class="mb-4"><h6 class="border-bottom pb-2">${esc(day)}</h6>`+
+    entries.map(({col,category,icon,x,d,key})=>{
+     const related=x.linkType&&x.linkId?`<span class="badge text-bg-secondary">↗ ${esc(x.linkType)}</span>`:'';
+     const amount=col==='accountHistory'&&Number.isFinite(Number(x.delta))?`<strong class="ms-auto">${fmt(Number(x.delta))}</strong>`:'';
+     const detail=col==='accountHistory'?`${esc(x.kind||'')} · ${esc(store.getById('accounts',x.accountId)?.name||'Account')}`:
+      col==='usageLogs'?esc(x.device||'Device'):col==='shopping'?(x.purchased?'Purchased':'Planned'):esc(x.frequency||x.status||x.category||'');
+     return `<div class="d-flex gap-2 align-items-start py-2 border-bottom"><i class="bi ${icon} mt-1"></i><div class="flex-grow-1" style="min-width:0"><div class="d-flex flex-wrap gap-2 align-items-center"><strong>${esc(title(x,col))}</strong>${amount}</div><small class="text-secondary">${esc(d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}))} · ${esc(category)} · ${detail}</small> ${related}</div><button type="button" class="btn btn-sm btn-outline-light" data-unified-open="${esc(key)}">View</button></div>`;
+    }).join('')+'</section>').join('')||'<p class="text-secondary">No matching activity yet. Try a longer date range or another category.</p>';
+   $('#unifiedMore').disabled=visible.length===items.length;
+ };
+ $('#unifiedRows').addEventListener('click',e=>{
+  const button=e.target.closest('[data-unified-open]');if(!button)return;
+  const [col,...rest]=button.dataset.unifiedOpen.split(':'),id=rest.join(':');
+  const record=store.getById(col,id);
+  if(!record)return;
+  if(['tasks','goals','projects','shopping','habits','notes','workouts'].includes(col)&&openItem){
+   bootstrap.Modal.getInstance(root)?.hide();
+   setTimeout(()=>openItem(col,record),300);
+  }else if(col==='accountHistory'){
+   bootstrap.Modal.getInstance(root)?.hide();
+   setTimeout(()=>bootstrap.Modal.getOrCreateInstance(document.querySelector('#moneyLedgerModal')).show(),300);
+  }else alert(JSON.stringify(record,null,2).slice(0,1500));
+ });
+ ['unifiedSearch','unifiedCategory','unifiedFrom','unifiedTo','unifiedLimit'].forEach(id=>$('#'+id).addEventListener('input',render));
+ $('#unifiedMore').addEventListener('click',()=>{$('#unifiedLimit').value=String(Number($('#unifiedLimit').value)+100);render()});
+ root.addEventListener('show.bs.modal',render);
+ store.subscribe(()=>{if(root.classList.contains('show'))render()});
 }
