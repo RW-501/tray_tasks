@@ -82,28 +82,41 @@ export function initV7(store,{openItem,render}){
  const saveTransaction=async()=>{const id=$('#v7AccountSelect').value,a=store.getById('accounts',id),amount=Number($('#moneyTransactionAmount').value),kind=$('#moneyTransactionKind').value;if(!a){feedback.textContent='Select an existing account first.';return;}if(!Number.isFinite(amount)||amount<=0){feedback.textContent='Enter an amount greater than zero.';return;}if(liability(a)!==['charge','payment'].includes(kind)){feedback.textContent='Select the correct transaction type for this account.';return;}const delta=signedChange(a,kind,amount),balance=Math.round((Number(a.balance||0)+delta)*100)/100;if(balance<0){feedback.textContent='This would create a negative recorded balance. Use a balance snapshot if the account is in credit.';return;}const at=new Date().toISOString(),reason=$('#moneyTransactionReason').value.trim()||({deposit:'Deposit',spend:'Spending',charge:'Card charge',payment:'Card payment'}[kind]);try{await store.upsert('accountHistory',{id:uid(),accountId:id,at,balance,delta,kind,transactionAmount:amount,reason,isOpeningBalance:false});await store.upsert('accounts',{...a,balance,updatedAt:at});await logV7Action(store,'recorded '+kind,a.name,{amount});renderFinance();$('#v7AccountSelect').value=id;syncSelected();renderLedger();$('#moneyTransactionAmount').value='';$('#moneyTransactionReason').value='';feedback.textContent=`Saved ${kind}: ${money(amount)}. New balance ${money(balance)}.`;}catch(e){console.error(e);feedback.textContent='Save failed. Inspect history before retrying.';}};
  $('#moneySaveTransaction').onclick=saveTransaction;
  const refreshTransferOptions=()=>{const opts=store.getAll('accounts').filter(a=>!liability(a)).map(a=>`<option value="${esc(a.id)}">${esc(a.name)} (${money(a.balance)})</option>`).join('');for(const id of ['moneyTransferFrom','moneyTransferTo']){const el=$('#'+id),prior=el.value;el.innerHTML='<option value="">Select account</option>'+opts;if([...el.options].some(o=>o.value===prior))el.value=prior;}};
+ const atomicMoney=async()=>{const [{getApp},f]=await Promise.all([import('https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js'),import('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js')]);return {db:f.getFirestore(getApp()),f};};
+ const cents=x=>Math.round(Number(x)*100);
+ // The operation document is the idempotency key. A retry reuses exactly the same ID.
+ const commitTransfer=async({id,fromId,toId,amountCents,reason,originalId='',mode='transfer'})=>{
+  const {db,f}=await atomicMoney(),op=f.doc(db,'moneyTransfers',id),src=f.doc(db,'accounts',fromId),dst=f.doc(db,'accounts',toId);
+  return f.runTransaction(db,async tx=>{
+   const [old,fromSnap,toSnap]=await Promise.all([tx.get(op),tx.get(src),tx.get(dst)]);
+   if(old.exists()){const v=old.data();if(v.fromId!==fromId||v.toId!==toId||v.amountCents!==amountCents||v.mode!==mode||v.originalId!==originalId)throw Error('Operation ID conflict');return 'Already committed; no duplicate';}
+   if(!fromSnap.exists()||!toSnap.exists())throw Error('Account missing');
+   const from=fromSnap.data(),to=toSnap.data();if(fromId===toId||['Credit Card','Loan'].includes(from.type)||['Credit Card','Loan'].includes(to.type))throw Error('Choose two asset accounts');
+   const before=cents(from.balance||0),after=cents(to.balance||0);if(before<amountCents)throw Error('Insufficient recorded balance');
+   const at=new Date().toISOString(),amount=amountCents/100,base={transferId:id,originalId,mode,at,reason,transactionAmount:amount};
+   tx.set(op,{id,fromId,toId,amountCents,reason,originalId,mode,at});
+   tx.set(f.doc(db,'accountHistory',id+'-out'),{...base,id:id+'-out',accountId:fromId,kind:'transfer_out',delta:-amount,balance:(before-amountCents)/100});
+   tx.set(f.doc(db,'accountHistory',id+'-in'),{...base,id:id+'-in',accountId:toId,kind:'transfer_in',delta:amount,balance:(after+amountCents)/100});
+   tx.update(src,{balance:(before-amountCents)/100,updatedAt:at});tx.update(dst,{balance:(after+amountCents)/100,updatedAt:at});
+   return 'Committed atomically';
+  });
+ };
+ let pending=null;
  const saveTransfer=async()=>{
-  const fromId=$('#moneyTransferFrom').value,toId=$('#moneyTransferTo').value,amount=Number($('#moneyTransferAmount').value),status=$('#moneyTransferFeedback');
-  if(!fromId||!toId||fromId===toId){status.textContent='Choose two different accounts.';return;}
-  const from=store.getById('accounts',fromId),to=store.getById('accounts',toId);
-  if(!from||!to||liability(from)||liability(to)){status.textContent='Transfers currently support asset accounts only.';return;}
-  if(!Number.isFinite(amount)||amount<=0||Math.round(amount*100)!==amount*100){status.textContent='Enter a positive amount with at most two decimals.';return;}
-  if(Number(from.balance||0)<amount){status.textContent='Insufficient recorded source balance. Update the balance first if needed.';return;}
-  const transferId=uid(),at=new Date().toISOString(),reason=$('#moneyTransferNote').value.trim()||`Transfer: ${from.name} to ${to.name}`;
-  const debit={id:uid(),accountId:fromId,transferId,at,kind:'transfer_out',delta:-amount,transactionAmount:amount,balance:Math.round((Number(from.balance)-amount)*100)/100,reason};
-  const credit={id:uid(),accountId:toId,transferId,at,kind:'transfer_in',delta:amount,transactionAmount:amount,balance:Math.round((Number(to.balance)+amount)*100)/100,reason};
-  const button=$('#moneySaveTransfer');button.disabled=true;status.textContent='Saving transfer…';
-  try{
-   // Two history entries share a stable ID for auditing. In case of partial failure,
-   // retry must be investigated in the ledger rather than automatically duplicated.
-   await store.upsert('accountHistory',debit);await store.upsert('accountHistory',credit);
-   await reconcileLedger(fromId);await reconcileLedger(toId);
-   await logV7Action(store,'transferred between accounts',reason,{amount,transferId});
-   status.textContent=`Recorded transfer ${money(amount)}. Both ledger entries share a reference.`;
-   $('#moneyTransferAmount').value='';$('#moneyTransferNote').value='';renderFinance();renderLedger();refreshTransferOptions();
-  }catch(e){console.error(e);status.textContent=`Transfer may be partially saved. Check Transactions for reference ${transferId} before retrying.`;}
+  const fromId=$('#moneyTransferFrom').value,toId=$('#moneyTransferTo').value,amount=Number($('#moneyTransferAmount').value),amountCents=cents(amount),reason=$('#moneyTransferNote').value.trim()||'Account transfer',status=$('#moneyTransferFeedback');
+  if(!fromId||!toId||fromId===toId||!Number.isFinite(amount)||amount<=0||Math.abs(amount*100-amountCents)>0.00001){status.textContent='Select different accounts and a valid positive amount.';return;}
+  const payload={fromId,toId,amountCents,reason};if(pending&&JSON.stringify(pending.payload)!==JSON.stringify(payload)){status.textContent='Previous operation unresolved. Retry it unchanged before creating a different transfer.';return;}
+  if(!pending)pending={id:uid(),payload};const button=$('#moneySaveTransfer');button.disabled=true;
+  try{const message=await commitTransfer({id:pending.id,...payload});pending=null;status.textContent=message;$('#moneyTransferAmount').value='';$('#moneyTransferNote').value='';renderFinance();renderLedger();refreshTransferOptions();}
+  catch(error){status.textContent='Not confirmed: '+error.message+'. Retry with the same inputs to avoid duplicates.';console.error(error);}
   finally{button.disabled=false;}
  };
+ const renderTransferAudit=()=>{
+  const groups=new Map();for(const x of store.getAll('accountHistory').filter(x=>x.transferId)){const g=groups.get(x.transferId)||[];g.push(x);groups.set(x.transferId,g);}
+  $('#moneyTransferManageRows').innerHTML=[...groups].map(([id,legs])=>{const out=legs.find(x=>x.kind==='transfer_out'),inc=legs.find(x=>x.kind==='transfer_in'),reversed=store.getAll('accountHistory').some(x=>x.originalId===id&&x.mode==='reversal');return `<div class="border rounded p-2 mb-2"><strong>${esc(out?.reason||inc?.reason||'Transfer')}</strong> ${money(Math.abs(out?.delta||0))} · ${out&&inc?'Paired':'Missing leg'} ${reversed?'· Reversed':''} ${out&&inc&&!reversed?`<button type="button" class="btn btn-sm btn-outline-warning" data-reverse="${esc(id)}">Reverse</button>`:''}</div>`;}).join('')||'No transfers';
+ };
+ $('#moneyTransferManageModal')?.addEventListener('show.bs.modal',renderTransferAudit);
+ $('#moneyTransferManageRows')?.addEventListener('click',async e=>{const btn=e.target.closest('[data-reverse]');if(!btn)return;const id=btn.dataset.reverse,legs=store.getAll('accountHistory').filter(x=>x.transferId===id),out=legs.find(x=>x.kind==='transfer_out'),inc=legs.find(x=>x.kind==='transfer_in');if(!out||!inc||!confirm('Reverse this transfer by recording an opposite transfer? The original remains in history.'))return;btn.disabled=true;try{$('#moneyTransferManageStatus').textContent=await commitTransfer({id:'reversal-'+id,fromId:inc.accountId,toId:out.accountId,amountCents:cents(Math.abs(out.delta)),reason:'Reversal of '+id,originalId:id,mode:'reversal'});renderTransferAudit();renderFinance();renderLedger();}catch(err){$('#moneyTransferManageStatus').textContent=err.message;btn.disabled=false;}});
  $('#moneySaveTransfer').onclick=saveTransfer;
  $('#v7FinanceModal').addEventListener('show.bs.modal',refreshTransferOptions);
 
