@@ -15,7 +15,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/calendar-popup.css">
-<link rel="stylesheet" href="css/voice-transcript.css"></head>
+<link rel="stylesheet" href="css/voice-transcript.css"><link rel="stylesheet" href="css/tray-dock.css">
+</head>
 <body>
 <div id="app" class="app-shell">
   <aside class="sidebar" id="sidebar">
@@ -231,6 +232,15 @@
 <script defer src="js/web-viewer.js"></script>
 <link rel="stylesheet" href="css/widget-board.css">
 <script type="module" src="js/widget-board.js"></script>
+<div id="trayDock" class="tray-dock" aria-label="Tray assistant floating chat">
+  <button id="trayDockToggle" type="button" class="tray-dock-bubble" aria-expanded="false" title="Open Tray chat"><i class="bi bi-stars"></i><span>Tray AI</span></button>
+  <section class="tray-dock-panel" aria-label="Tray chat">
+    <header><strong><i class="bi bi-stars"></i> Tray AI</strong><span id="trayDockStatus" role="status">Ready</span><button id="trayDockExpand" title="Full chat" aria-label="Full chat"><i class="bi bi-arrows-angle-expand"></i></button><button id="trayDockClose" title="Hide chat" aria-label="Hide chat"><i class="bi bi-x-lg"></i></button></header>
+    <div id="trayDockMessages" class="tray-dock-messages" aria-live="polite"><p class="tray-dock-intro">Ask me to open screens, manage your board, or work with tasks. Voice and typed requests appear here.</p></div>
+    <div id="trayDockTranscript" class="tray-dock-transcript" aria-live="polite">Waiting for speech…</div>
+    <div class="tray-dock-compose"><button id="trayDockMic" title="Toggle microphone" aria-label="Toggle microphone"><i class="bi bi-mic"></i></button><textarea id="trayDockInput" rows="1" placeholder="Ask Tray…" aria-label="Message Tray"></textarea><button id="trayDockSend" title="Send" aria-label="Send"><i class="bi bi-send"></i></button></div>
+  </section>
+</div>
 </body>
 </html>
 
