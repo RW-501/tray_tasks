@@ -1,3 +1,4 @@
+import {initUXWorkflow} from './ux-workflow.js';
 import {initLuxuryStudio} from './luxury-studio.js';
 import {initExecutiveCommandCenter} from './executive-command-center.js';
 // Command Center V7 extensions. All financial data is entered manually.
@@ -19,6 +20,7 @@ export function initV7(store,{openItem,render}){
  initUnifiedTimeline(store,{openItem});
  initExecutiveCommandCenter(store,{openItem,render});
  initLuxuryStudio(store);
+ initUXWorkflow(store);
  // Move the original Analytics/Assistant sidebar entries into the tool panel.
  for(const id of ['analyticsNavBtn','assistantNavBtn']){const el=$('#'+id);if(el)el.style.display='none';}
  // Relocate screens into proper Bootstrap modals without duplicating their IDs.

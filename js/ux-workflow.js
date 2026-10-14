@@ -1,0 +1,12 @@
+// A single entry point for common workflows; underlying records remain in Firestore.
+export function initUXWorkflow(store){
+ const $=s=>document.querySelector(s);
+ document.addEventListener('click',e=>{const b=e.target.closest('[data-cc-launch]');if(!b)return;const target=$(b.dataset.ccLaunch);if(!target)return;const active=document.querySelector('.modal.show');if(active&&active!==target){bootstrap.Modal.getInstance(active)?.hide();setTimeout(()=>bootstrap.Modal.getOrCreateInstance(target).show(),300)}else bootstrap.Modal.getOrCreateInstance(target).show()});
+ $('#ccOpenDesignerFromRegistry')?.addEventListener('click',()=>{bootstrap.Modal.getInstance($('#deviceProfileModal'))?.hide();setTimeout(()=>bootstrap.Modal.getOrCreateInstance($('#ccLuxuryModal')).show(),300)});
+ // Keep an always-visible activity history near the primary Log Activity action.
+ const render=()=>{const list=$('#ccTodayActivityList'),summary=$('#ccTodayActivitySummary');if(!list||!summary)return;const d=new Date(),day=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');const logs=store.getAll('activityLogs').filter(x=>String(x.date||x.startedAt||'').startsWith(day)).sort((a,b)=>String(b.startedAt||b.createdAt||'').localeCompare(String(a.startedAt||a.createdAt||'')));summary.textContent=logs.length?`${logs.length} logged today · synced with your activity history`:'Nothing logged yet. Tap Log Activity to start.';list.replaceChildren();for(const x of logs.slice(0,4)){const chip=document.createElement('span');chip.className='cc-activity-chip';chip.textContent=x.title||x.type||'Activity';list.append(chip)}if(logs.length>4){const more=document.createElement('button');more.className='btn btn-sm btn-outline-light';more.textContent=`+${logs.length-4} more`;more.dataset.ccLaunch='#unifiedTimelineModal';list.append(more)}};
+ render();store.subscribe(({collection})=>{if(collection==='activityLogs')render()});
+ // Avoid competing entry points: registry handles identity; one designer handles layouts.
+ for(const id of ['ccDeviceSettingsBtn','ccQuickActivityBtn']){const b=$('#'+id);if(b)b.hidden=true}
+ const legacy=$('#ccAppsGrid');if(legacy){for(const b of legacy.querySelectorAll('button')){const t=b.textContent.trim().toLowerCase();if(t==='luxury layout studio')b.textContent='Customize Screen';if(t==='device registry')b.textContent='Manage Devices';if(t==='log life activity')b.textContent='Log Activity';}}
+}
