@@ -44,3 +44,17 @@ html[data-cc-density="large"] button{min-height:42px}
 .cc-intel-stat{padding:1rem;border:1px solid rgba(255,255,255,.15);border-radius:12px;height:100%}
 .cc-intel-stat small{display:block;opacity:.75}.cc-intel-stat strong{font-size:1.45rem}
 .cc-privacy-reduced #widgetSavings,.cc-privacy-public #widgetSavings,.cc-privacy-public #widgetNotes{display:none!important}
+
+/* Executive luxury layout studio */
+#dashboardGrid{gap:var(--luxury-gap,16px)!important}
+#dashboardGrid>.panel{border-radius:var(--luxury-radius,18px)!important;min-width:0}
+[data-luxury-surface="solid"] #dashboardGrid>.panel{backdrop-filter:none!important;background:#151c2c!important}
+#dashboardGrid>.panel .progress-bar,.btn-neon{accent-color:var(--luxury-accent,#65d6ff)}
+.luxury-modal .modal-content,.luxury-settings{border:1px solid rgba(154,180,220,.18)}
+.luxury-studio-hero,.luxury-settings{padding:16px;border-radius:16px;background:rgba(24,37,58,.45)}
+.luxury-widget-row{display:grid;grid-template-columns:16px 40px minmax(90px,1fr) 108px 34px 34px;gap:7px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(200,220,255,.12)}
+.luxury-widget-row .form-control,.luxury-widget-row .form-select{min-width:0}
+.luxury-focus #dashboardGrid>.panel:not(:first-child){opacity:.85}
+.luxury-no-motion *, .luxury-no-motion *::before,.luxury-no-motion *::after{animation:none!important;transition:none!important}
+@media(max-width:700px){.luxury-widget-row{grid-template-columns:14px 28px minmax(75px,1fr) 80px 30px 30px;gap:4px}.luxury-widget-row .btn{padding:3px}}
+@media(max-width:900px){#dashboardGrid>[data-widget]{grid-column:span 1!important}}

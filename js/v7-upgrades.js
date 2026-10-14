@@ -1,3 +1,4 @@
+import {initLuxuryStudio} from './luxury-studio.js';
 import {initExecutiveCommandCenter} from './executive-command-center.js';
 // Command Center V7 extensions. All financial data is entered manually.
 const $=s=>document.querySelector(s), uid=()=>crypto.randomUUID(), money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(n)||0);
@@ -17,6 +18,7 @@ export function initV7(store,{openItem,render}){
  $('#ccAppsGrid').addEventListener('click',e=>{const b=e.target.closest('[data-tool-modal]');if(!b)return;bootstrap.Modal.getInstance($('#ccAppsModal'))?.hide();setTimeout(()=>{if(b.dataset.toolModal==='#moneyLedgerModal')renderLedger();open(b.dataset.toolModal)},250)});
  initUnifiedTimeline(store,{openItem});
  initExecutiveCommandCenter(store,{openItem,render});
+ initLuxuryStudio(store);
  // Move the original Analytics/Assistant sidebar entries into the tool panel.
  for(const id of ['analyticsNavBtn','assistantNavBtn']){const el=$('#'+id);if(el)el.style.display='none';}
  // Relocate screens into proper Bootstrap modals without duplicating their IDs.
