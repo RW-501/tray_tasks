@@ -20,7 +20,9 @@ function save(){if(!current)return;const existing=saved.findIndex(x=>x.url===cur
 function renderSaved(){const target=$('ccMediaSaved');target.replaceChildren();saved.forEach(item=>{const b=document.createElement('button');b.type='button';b.textContent=item.label;b.addEventListener('click',()=>open(item.url));target.append(b)});$('ccMediaSave').textContent=saved.some(x=>x.url===current)?'★ Saved':'☆ Save'}
 function playPause(){const v=stage.querySelector('video,audio');if(v){if(v.paused)v.play().catch(()=>{});else v.pause();return 'Toggled media playback.'}if(type==='youtube'){stage.querySelector('iframe')?.contentWindow?.postMessage(JSON.stringify({event:'command',func:'playVideo',args:[]}), 'https://www.youtube-nocookie.com');return 'Requested YouTube playback.'}return 'Playback controls depend on the embedded provider.'}
 function pause(){const v=stage.querySelector('video,audio');if(v)v.pause();else if(type==='youtube')stage.querySelector('iframe')?.contentWindow?.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), 'https://www.youtube-nocookie.com');return 'Requested pause.'}
-function interpret(text){let s=String(text||'').replace(/^(?:hey\s+)?(?:tray|trey)[,\s:!]+/i,'').trim(),m;
+async function interpret(text){
+if(window.CommandCenterMediaSync?.interpret){const result=await window.CommandCenterMediaSync.interpret(text);if(result)return result}
+let s=String(text||'').replace(/^(?:hey\s+)?(?:tray|trey)[,\s:!]+/i,'').trim(),m;
 if(/^(?:pause|stop)(?:\s+(?:the\s+)?(?:video|music|media))?$/i.test(s))return pause();
 if(/^(?:play|resume)(?:\s+(?:the\s+)?(?:video|music|media))?$/i.test(s))return playPause();
 if(/^(?:next|next video|play next)$/i.test(s)){next();return 'Opening the next saved video if available.'}
@@ -32,5 +34,5 @@ return null}
 function next(){if(!saved.length){status.textContent='Save videos to build a playlist.';return}const candidates=saved.filter(x=>youtubeId(safeURL(x.url)||{hostname:'',pathname:''}));if(!candidates.length){status.textContent='No saved YouTube videos.';return}queueIndex=(queueIndex+1)%candidates.length;open(candidates[queueIndex].url)}
 $('ccMediaNavBtn')?.addEventListener('click',()=>bootstrap.Modal.getOrCreateInstance(modal).show());$('ccMediaForm').addEventListener('submit',e=>{e.preventDefault();open(input.value)});$('ccMediaSave').addEventListener('click',save);$('ccMediaPlay').addEventListener('click',playPause);$('ccMediaNext').addEventListener('click',next);$('ccMediaPip').addEventListener('click',async()=>{const v=stage.querySelector('video');if(v?.requestPictureInPicture){try{await v.requestPictureInPicture()}catch{status.textContent='Picture-in-Picture not available.'}}else status.textContent='Picture-in-Picture requires a compatible native video.'});$('ccMediaExternal').addEventListener('click',()=>{if(current)window.open(current,'_blank','noopener,noreferrer')});document.querySelectorAll('[data-media-sample]').forEach(b=>b.addEventListener('click',()=>open(b.dataset.mediaSample)));
 modal.addEventListener('hidden.bs.modal',()=>{stage.querySelector('video,audio')?.pause();if(type==='youtube')pause()});
-window.CommandCenterMedia={open,interpret,pause,playPause};renderSaved();
+window.CommandCenterMedia={open,interpret,pause,playPause,getCurrent:()=>({url:current,type,videoId}),show:()=>bootstrap.Modal.getOrCreateInstance(modal).show()};renderSaved();
 })();

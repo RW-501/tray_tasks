@@ -246,10 +246,17 @@
 <div class="modal fade" id="ccMediaModal" tabindex="-1" aria-labelledby="ccMediaTitle"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content cc-media-shell"><div class="modal-header"><h2 class="modal-title fs-5" id="ccMediaTitle"><i class="bi bi-play-btn"></i> Tray Media Center</h2><button class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body">
 <div class="cc-media-toolbar"><form id="ccMediaForm"><input id="ccMediaInput" class="form-control" aria-label="Media link or Wikipedia topic" placeholder="Paste YouTube, Spotify, Twitch, Wikipedia or video URL…"><button class="btn btn-neon" type="submit">Open</button></form><button class="btn btn-outline-light" id="ccMediaSave" type="button" title="Save current item">☆ Save</button></div>
 <div class="cc-media-categories"><button data-media-sample="https://en.wikipedia.org/wiki/Artificial_intelligence">Wikipedia</button><button data-media-sample="https://open.spotify.com/">Spotify</button><button data-media-sample="https://www.youtube.com/">YouTube</button><button data-media-sample="https://www.twitch.tv/">Twitch</button></div>
+<section class="cc-media-discovery" aria-label="YouTube search and playlists">
+<form id="ccYouTubeSearch" class="cc-media-search"><input class="form-control" id="ccYouTubeQuery" placeholder="Search YouTube videos, artists, tutorials…" aria-label="Search YouTube"><label class="cc-media-latest"><input id="ccYouTubeLatest" type="checkbox"> Newest first</label><button class="btn btn-neon" type="submit">Search</button></form>
+<div id="ccYouTubeResults" class="cc-media-results" aria-live="polite"></div>
+<div class="cc-media-sync"><select id="ccPlaylistSelect" class="form-select" aria-label="Playlist"><option value="">Choose playlist…</option></select><button id="ccPlaylistNew" class="btn btn-outline-light btn-sm" type="button">New playlist</button><button id="ccPlaylistAdd" class="btn btn-outline-light btn-sm" type="button">Add playing video</button><button id="ccPlaylistPlay" class="btn btn-outline-light btn-sm" type="button">Play playlist</button></div>
+<div id="ccPlaylistItems" class="cc-media-playlist"></div>
+<div class="cc-media-sync"><select id="ccMediaTarget" class="form-select" aria-label="Send to device"><option value="">Choose destination screen…</option></select><button id="ccMediaSend" class="btn btn-outline-light btn-sm" type="button">Play on device</button></div>
+</section>
 <div id="ccMediaStatus" role="status" aria-live="polite">Paste a supported media URL or ask Tray to open one.</div><div id="ccMediaStage" class="cc-media-stage"><div class="cc-media-placeholder"><i class="bi bi-collection-play"></i><h3>Your media, inside Command Center</h3><p>Use official embedded players for supported links, or read Wikipedia summaries without loading a blocked webpage.</p></div></div>
 <div class="cc-media-controls"><button type="button" id="ccMediaPlay" class="btn btn-outline-light btn-sm">Play / Pause</button><button type="button" id="ccMediaNext" class="btn btn-outline-light btn-sm">Next</button><button type="button" id="ccMediaPip" class="btn btn-outline-light btn-sm">Picture-in-Picture</button><button type="button" id="ccMediaExternal" class="btn btn-outline-light btn-sm">Open original</button></div><h3 class="h6 mt-3">Saved items</h3><div id="ccMediaSaved" class="cc-media-saved"></div>
 </div></div></div></div>
-<link rel="stylesheet" href="css/media-center.css"><script defer src="js/media-center.js"></script>
+<link rel="stylesheet" href="css/media-center.css"><script defer src="js/media-center.js"></script><script type="module" src="js/media-sync.js"></script>
 </body>
 </html>
 

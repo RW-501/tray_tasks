@@ -56,25 +56,6 @@ exports.api = onRequest(
         });
       }
 
-      // Public Google News RSS feed, normalized on the server to avoid browser CORS.
-      if (req.method === "GET" && req.path === "/board-news") {
-        try {
-          const feed = await fetch("https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en", {signal: AbortSignal.timeout(8000)});
-          if (!feed.ok) throw new Error("News source unavailable");
-          const xml = await feed.text();
-          const decode = (v) => String(v).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-            .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">")
-            .replace(/&quot;/g,'"').replace(/&#39;/g,"'");
-          const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0,12).map((m)=>{
-            const title = m[1].match(/<title>([\s\S]*?)<\/title>/)?.[1] || "";
-            const link = m[1].match(/<link>([\s\S]*?)<\/link>/)?.[1] || "";
-            return {title:decode(title).replace(/<[^>]*>/g, ""),url:decode(link)};
-          }).filter(x=>x.title && /^https:\/\//.test(x.url));
-          res.set("Cache-Control", "public, max-age=600");
-          return res.json({items,source:"Google News RSS",updatedAt:Date.now()});
-        } catch(e) {return res.status(502).json({error:e.message});}
-      }
-
       // -------------------------
       // Analyze Note
       // -------------------------
@@ -660,4 +641,22 @@ exports.generateExecutiveLayout = onCall({region:"us-central1",secrets:[OPENAI_A
   for(const r of parsed.rects){if(!ids.has(r.id)||seen.has(r.id))continue;seen.add(r.id);const x=Math.max(0,Math.min(11,Math.round(Number(r.x)||0))),w=Math.max(1,Math.min(12-x,Math.round(Number(r.w)||6)));rects.push({id:r.id,x,y:Math.max(0,Math.min(150,Math.round(Number(r.y)||0))),w,h:Math.max(2,Math.min(25,Math.round(Number(r.h)||5)))})}
   if(!rects.length)throw new HttpsError('internal','No usable layout placements.');
   return {rects};
+});
+
+
+// Authenticated YouTube Data API search. The key stays server-side.
+const YOUTUBE_API_KEY = defineSecret('YOUTUBE_API_KEY');
+exports.searchYouTubeMedia = onCall({region:'us-central1',secrets:[YOUTUBE_API_KEY],maxInstances:5},async request=>{
+  if(!request.auth)throw new HttpsError('unauthenticated','Sign in to search YouTube.');
+  const owner=process.env.TRAY_OWNER_UID;
+  if(!owner||request.auth.uid!==owner)throw new HttpsError('permission-denied','Owner access required; configure TRAY_OWNER_UID.');
+  const q=String(request.data?.query||'').trim().slice(0,120);
+  if(q.length<2)throw new HttpsError('invalid-argument','Enter a search phrase.');
+  const params=new URLSearchParams({part:'snippet',type:'video',maxResults:'12',q,key:YOUTUBE_API_KEY.value(),safeSearch:'moderate',videoEmbeddable:'true'});
+  if(request.data?.latest===true)params.set('order','date');
+  let response;
+  try{response=await fetch('https://www.googleapis.com/youtube/v3/search?'+params,{signal:AbortSignal.timeout(12000)});}catch{throw new HttpsError('unavailable','YouTube search is temporarily unreachable.');}
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new HttpsError('failed-precondition',data?.error?.message||'YouTube API unavailable. Check the key, quota and API enablement.');
+  return {results:(data.items||[]).filter(x=>/^[A-Za-z0-9_-]{11}$/.test(x.id?.videoId||'')).map(x=>({id:x.id.videoId,title:String(x.snippet?.title||'Untitled').slice(0,200),channel:String(x.snippet?.channelTitle||'').slice(0,100),publishedAt:x.snippet?.publishedAt||'',thumbnail:x.snippet?.thumbnails?.medium?.url||''}))};
 });
