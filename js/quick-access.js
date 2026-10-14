@@ -6,7 +6,7 @@ export function initQuickAccess(store){
  const catalog=[
  ['Log Activity','#ccQuickActivityModal','bi-plus-circle'],['Tray AI','#v7AssistantModal','bi-stars'],
  ['Add Task','task','bi-list-task'],['Timeline','#unifiedTimelineModal','bi-clock-history'],
- ['Money Workspace','#ccMoneyWorkspaceModal','bi-wallet2'],['Shopping','shopping','bi-cart3'],
+ ['Money Workspace','#ccMoneyWorkspaceModal','bi-wallet2'],['Web Viewer','#ccWebViewerModal','bi-globe2'],['Shopping','shopping','bi-cart3'],
  ['Goals','goal','bi-bullseye'],['Projects','project','bi-kanban'],
  ['Habits','#v7HabitHistoryModal','bi-check-circle'],['Workouts','workout','bi-heart-pulse'],
  ['Life Intelligence','#ccIntelligenceModal','bi-graph-up-arrow'],
