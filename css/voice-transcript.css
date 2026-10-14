@@ -1,0 +1,1 @@
+.voice-transcript-panel{padding:1rem;border:1px solid var(--line, #49515e);border-radius:16px;margin:1rem 0;background:rgba(120,140,170,.07)}.voice-live-text{margin-top:.6rem;min-height:3.2rem;line-height:1.55;overflow-wrap:anywhere;font-size:1.05rem}.voice-live-text[data-final="false"]{opacity:.78;font-style:italic}.voice-transcript-panel button{white-space:normal}
