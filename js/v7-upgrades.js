@@ -1,3 +1,4 @@
+import {initUnifiedWorkflows} from './unified-workflows.js';
 import {initUXWorkflow} from './ux-workflow.js';
 import {initLuxuryStudio} from './luxury-studio.js';
 import {initExecutiveCommandCenter} from './executive-command-center.js';
@@ -21,6 +22,7 @@ export function initV7(store,{openItem,render}){
  initExecutiveCommandCenter(store,{openItem,render});
  initLuxuryStudio(store);
  initUXWorkflow(store);
+ initUnifiedWorkflows(store,{openItem});
  // Move the original Analytics/Assistant sidebar entries into the tool panel.
  for(const id of ['analyticsNavBtn','assistantNavBtn']){const el=$('#'+id);if(el)el.style.display='none';}
  // Relocate screens into proper Bootstrap modals without duplicating their IDs.
