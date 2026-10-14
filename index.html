@@ -27,7 +27,7 @@
     <nav class="nav flex-column gap-1 mt-3">
       <button class="nav-link active"><i class="bi bi-grid-1x2"></i>Dashboard</button>
       <button class="nav-link" data-view="calendar"><i class="bi bi-calendar3"></i>Calendar</button>
-      <button class="nav-link" id="advancedSearchBtn"><i class="bi bi-funnel"></i>Search & Filter</button><button class="nav-link" id="analyticsNavBtn"><i class="bi bi-graph-up-arrow"></i>Productivity Analytics</button><button class="nav-link" id="ccWebNavBtn" type="button"><i class="bi bi-globe2"></i> Web Viewer</button><button class="nav-link" id="assistantNavBtn"><i class="bi bi-mic"></i>Tray Assistant</button>
+      <button class="nav-link" id="advancedSearchBtn"><i class="bi bi-funnel"></i>Search & Filter</button><button class="nav-link" id="analyticsNavBtn"><i class="bi bi-graph-up-arrow"></i>Productivity Analytics</button><button class="nav-link" id="ccMediaNavBtn" type="button"><i class="bi bi-play-btn"></i> Media Center</button><button class="nav-link" id="ccWebNavBtn" type="button"><i class="bi bi-globe2"></i> Web Viewer</button><button class="nav-link" id="assistantNavBtn"><i class="bi bi-mic"></i>Tray Assistant</button>
       <button class="nav-link" data-open-task><i class="bi bi-list-task"></i>New Task</button>
       <button class="nav-link" data-add="goal"><i class="bi bi-bullseye"></i>New Goal</button>
       <button class="nav-link" data-add="project"><i class="bi bi-kanban"></i>New Project</button>
@@ -241,6 +241,15 @@
     <div class="tray-dock-compose"><button id="trayDockMic" title="Toggle microphone" aria-label="Toggle microphone"><i class="bi bi-mic"></i></button><textarea id="trayDockInput" rows="1" placeholder="Ask Tray…" aria-label="Message Tray"></textarea><button id="trayDockSend" title="Send" aria-label="Send"><i class="bi bi-send"></i></button></div>
   </section>
 </div>
+
+<!-- Independent Media Center; no changes to task, finance or widget persistence. -->
+<div class="modal fade" id="ccMediaModal" tabindex="-1" aria-labelledby="ccMediaTitle"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content cc-media-shell"><div class="modal-header"><h2 class="modal-title fs-5" id="ccMediaTitle"><i class="bi bi-play-btn"></i> Tray Media Center</h2><button class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body">
+<div class="cc-media-toolbar"><form id="ccMediaForm"><input id="ccMediaInput" class="form-control" aria-label="Media link or Wikipedia topic" placeholder="Paste YouTube, Spotify, Twitch, Wikipedia or video URL…"><button class="btn btn-neon" type="submit">Open</button></form><button class="btn btn-outline-light" id="ccMediaSave" type="button" title="Save current item">☆ Save</button></div>
+<div class="cc-media-categories"><button data-media-sample="https://en.wikipedia.org/wiki/Artificial_intelligence">Wikipedia</button><button data-media-sample="https://open.spotify.com/">Spotify</button><button data-media-sample="https://www.youtube.com/">YouTube</button><button data-media-sample="https://www.twitch.tv/">Twitch</button></div>
+<div id="ccMediaStatus" role="status" aria-live="polite">Paste a supported media URL or ask Tray to open one.</div><div id="ccMediaStage" class="cc-media-stage"><div class="cc-media-placeholder"><i class="bi bi-collection-play"></i><h3>Your media, inside Command Center</h3><p>Use official embedded players for supported links, or read Wikipedia summaries without loading a blocked webpage.</p></div></div>
+<div class="cc-media-controls"><button type="button" id="ccMediaPlay" class="btn btn-outline-light btn-sm">Play / Pause</button><button type="button" id="ccMediaNext" class="btn btn-outline-light btn-sm">Next</button><button type="button" id="ccMediaPip" class="btn btn-outline-light btn-sm">Picture-in-Picture</button><button type="button" id="ccMediaExternal" class="btn btn-outline-light btn-sm">Open original</button></div><h3 class="h6 mt-3">Saved items</h3><div id="ccMediaSaved" class="cc-media-saved"></div>
+</div></div></div></div>
+<link rel="stylesheet" href="css/media-center.css"><script defer src="js/media-center.js"></script>
 </body>
 </html>
 
