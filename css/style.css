@@ -32,3 +32,15 @@
 
 /* Device-specific display profiles */
 [data-cc-density="compact"] #dashboardGrid .panel{padding:12px!important}[data-cc-density="large"] button,[data-cc-density="large"] .nav-link{min-height:48px}[data-cc-columns="1"] #dashboardGrid{grid-template-columns:minmax(0,1fr)!important}[data-cc-columns="2"] #dashboardGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}[data-cc-columns="3"] #dashboardGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}@media(max-width:640px){[data-cc-columns="2"] #dashboardGrid,[data-cc-columns="3"] #dashboardGrid{grid-template-columns:minmax(0,1fr)!important}}[data-cc-nav="minimal"] .sidebar nav>.nav-link:not(#ccDeviceSettingsBtn):not(#ccQuickActivityBtn):not(#ccAllToolsBtn){display:none!important}[data-cc-nav="hidden"] .sidebar nav>.nav-link:not(#ccDeviceSettingsBtn):not(#ccQuickActivityBtn):not(#ccAllToolsBtn){display:none!important}#dashboardGrid [data-widget][hidden]{display:none!important}.cc-device-focus{outline:2px solid #64d8ff;outline-offset:3px}#ccDeviceWidgets>div,#ccDeviceNavItems>div{min-height:44px}#ccActivityChips .btn{min-height:40px}
+
+/* Executive device presentation */
+html {font-size:var(--cc-device-font-scale,100%)}
+html[data-cc-columns="1"] #dashboardGrid{grid-template-columns:minmax(0,1fr)!important}
+html[data-cc-columns="2"] #dashboardGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+html[data-cc-columns="3"] #dashboardGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+@media(max-width:760px){html[data-cc-columns] #dashboardGrid{grid-template-columns:minmax(0,1fr)!important}}
+html[data-cc-density="compact"] #dashboardGrid>*{padding:.65rem!important}
+html[data-cc-density="large"] button{min-height:42px}
+.cc-intel-stat{padding:1rem;border:1px solid rgba(255,255,255,.15);border-radius:12px;height:100%}
+.cc-intel-stat small{display:block;opacity:.75}.cc-intel-stat strong{font-size:1.45rem}
+.cc-privacy-reduced #widgetSavings,.cc-privacy-public #widgetSavings,.cc-privacy-public #widgetNotes{display:none!important}
