@@ -56,6 +56,25 @@ exports.api = onRequest(
         });
       }
 
+      // Public Google News RSS feed, normalized on the server to avoid browser CORS.
+      if (req.method === "GET" && req.path === "/board-news") {
+        try {
+          const feed = await fetch("https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en", {signal: AbortSignal.timeout(8000)});
+          if (!feed.ok) throw new Error("News source unavailable");
+          const xml = await feed.text();
+          const decode = (v) => String(v).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+            .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">")
+            .replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+          const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0,12).map((m)=>{
+            const title = m[1].match(/<title>([\s\S]*?)<\/title>/)?.[1] || "";
+            const link = m[1].match(/<link>([\s\S]*?)<\/link>/)?.[1] || "";
+            return {title:decode(title).replace(/<[^>]*>/g, ""),url:decode(link)};
+          }).filter(x=>x.title && /^https:\/\//.test(x.url));
+          res.set("Cache-Control", "public, max-age=600");
+          return res.json({items,source:"Google News RSS",updatedAt:Date.now()});
+        } catch(e) {return res.status(502).json({error:e.message});}
+      }
+
       // -------------------------
       // Analyze Note
       // -------------------------
