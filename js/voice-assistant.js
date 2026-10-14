@@ -1,3 +1,4 @@
+import {createTrayHelpers} from './tray-helpers.js';
 const $=s=>document.querySelector(s);
 const esc=(v='')=>String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const uid=()=>crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -7,6 +8,7 @@ const nowTime=()=>new Date().toTimeString().slice(0,5);
 export function initVoiceAssistant(store,{apiBaseUrl,getSettings,saveSettings,toast}={}){
   const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;let recognition=null,listening=false,manualStop=false;
   const history=[];
+  const helpers=createTrayHelpers(store);
   const dock=document.getElementById('trayDock');
   const dockLog=document.getElementById('trayDockMessages');
   const dockInput=document.getElementById('trayDockInput');
@@ -28,6 +30,8 @@ export function initVoiceAssistant(store,{apiBaseUrl,getSettings,saveSettings,to
   function context(){return {date:today(),openTasks:(store.data.tasks||[]).filter(x=>!x.completed).slice(0,35).map(x=>({id:x.id,title:x.title,date:x.date,startTime:x.startTime,priority:x.priority,projectId:x.projectId,goalId:x.goalId})),todayBlocks:(store.data.dailyBlocks||[]).filter(x=>x.date===today()).map(x=>({type:x.type,title:x.title,startTime:x.startTime,endTime:x.endTime})),recentActivity:(store.data.activityLogs||[]).filter(x=>!x.needsReview).slice(-50).map(x=>({type:x.type,title:x.title,date:x.date,time:x.time,partOfDay:x.partOfDay,durationMinutes:x.durationMinutes})),goals:(store.data.goals||[]).slice(0,20).map(x=>({id:x.id,title:x.title,targetDate:x.targetDate})),projects:(store.data.projects||[]).slice(0,20).map(x=>({id:x.id,title:x.title}))}}
   async function send(text){text=String(text||'').trim();if(!text)return;renderMessage('user',text);history.push({role:'user',content:text});$('#assistantInput').value='';if(dockInput)dockInput.value='';status('Thinking…');try{
     const normalized=text.replace(/^(?:hey\s+)?(?:tray|trey)[,\s:!]+/i,'').trim();
+    const helperReply=await helpers.handle(normalized);
+    if(helperReply!==null){renderMessage('assistant',helperReply);history.push({role:'assistant',content:helperReply});speak(helperReply);status('Ready');return}
     const direct=normalized.toLowerCase();
     if(/^(?:open|show|go to)\s+(?:my\s+)?(?:tasks?|calendar|goals?|projects?|notes?|money|finances?|timeline|widget board|dashboard|assistant|tray ai)$/i.test(direct)){
       const target=direct.replace(/^(open|show|go to)\s+(my\s+)?/,'').trim();
